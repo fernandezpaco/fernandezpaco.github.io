@@ -1,0 +1,55 @@
+<link rel="import" href="../polymer/polymer.html">
+<script src="../js-objectdetect/js/objectdetect.js"></script>
+<script src="../js-objectdetect/js/objectdetect.frontalface.js"></script>
+
+
+<dom-module id="face-tracker">
+<template>
+</template>
+<script>
+Polymer({
+    is: "face-tracker",
+    properties: {
+        video: {
+            type: Object
+        },
+        detected: {
+            type: Boolean,
+            value: false,
+            notify: true
+        }
+    },
+    ready: function(){
+
+        var me=this, detector;
+
+         window.requestAnimationFrame(play);
+
+        function play() {
+            window.requestAnimationFrame(function(){
+                if (me.video && me.video.paused) me.video.play();
+
+                if (me.video && me.video.readyState === me.video.HAVE_ENOUGH_DATA && me.video.videoWidth > 0) {
+                    if (!detector) {
+                        var width = ~~(60 * me.video.clientWidth / me.video.clientHeight);
+                        var height  =60;
+                        detector = new objectdetect.detector(width, height, 1.1, objectdetect.frontalface);
+                    }
+
+                    // Perform the actual detection:
+                    var coords = detector.detect(me.video, 1);
+                    if (coords[0]) {
+                        me.detected=true;
+                    }else{
+                        me.detected=false;
+                    }
+
+                }
+
+                setTimeout(play, 100);
+            });
+        }
+    }
+});
+</script>
+</dom-module>
