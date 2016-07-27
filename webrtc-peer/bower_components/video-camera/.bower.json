@@ -3,14 +3,14 @@
   "authors": [
     "e022333 <ffernandez@bbva.com>"
   ],
-  "version": "1.0.5",
+  "version": "1.0.7",
   "description": "Polymer component for video camera access and for image capture",
   "main": "video-camera.html",
   "keywords": [
     "web-components"
   ],
   "license": "MIT",
-  "homepage": "",
+  "homepage": "https://github.com/fernandezpaco/video-camera",
   "ignore": [
     "**/.*",
     "node_modules",
@@ -22,5 +22,14 @@
     "iron-ajax": "PolymerElements/iron-ajax#^1.4.0",
     "polymer": "Polymer/polymer#^1.0.0",
     "webcomponentsjs": "^0.7.22"
-  }
+  },
+  "_release": "1.0.7",
+  "_resolution": {
+    "type": "version",
+    "tag": "1.0.7",
+    "commit": "c20791520c1594ee489b956f0d5197e17f0f8ef3"
+  },
+  "_source": "https://github.com/fernandezpaco/video-camera.git",
+  "_target": "^1.0.1",
+  "_originalSource": "video-camera"
 }
