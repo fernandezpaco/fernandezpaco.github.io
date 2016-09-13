@@ -36,6 +36,15 @@ Polymer({
             port: 443
         });
 
+        // hack to get around the fact that if a server connection cannot
+        // be established, the peer and its socket property both still have
+        // open === true; instead, listen to the wrapped WebSocket
+        // and show an error if its readyState becomes CLOSED
+        this.peer.socket._socket.onclose = function () {
+            logError('no connection to server');
+            me.peer = null;
+        };
+
         this.peer.on('open', function(id) {
             console.log('My peer ID is: ' + id);
             me.peerid=id;
@@ -54,14 +63,21 @@ Polymer({
 
     },
     _peerid_changed: function(){
-        if(this.peerid_tocall && this.peerid_tocall!=""){
+        if(this.peerid_tocall && this.peerid_tocall!="" && typeof this.peerid_tocall=="string"){
             var me=this;
             var call = this.peer.call(this.peerid_tocall, me.stream);
 
+            console.log('Initiating call to peer:'+this.peerid_tocall);
             call.on('stream', function(stream) {
                 console.log('received stream from peer');
                 me.peerstream=stream;
             });     
+
+            call.on('error', function(err) {
+                console.log('error');
+                console.log(err);
+            });     
+
 
         }
     }
