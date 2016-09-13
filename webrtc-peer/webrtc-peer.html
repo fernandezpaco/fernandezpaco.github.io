@@ -39,6 +39,34 @@ Polymer({
             port: 443
         });
 
+        // pass the peer instance, and it will start sending heartbeats
+        var heartbeater = makePeerHeartbeater( this.peer );
+
+        // stop them later
+        // heartbeater.stop();
+
+        function makePeerHeartbeater ( peer ) {
+            var timeoutId = 0;
+            function heartbeat () {
+                timeoutId = setTimeout( heartbeat, 5000 );
+                if ( peer.socket._wsOpen() ) {
+                    peer.socket.send( {type:'HEARTBEAT'} );
+                }
+            }
+            // Start 
+            heartbeat();
+            // return
+            return {
+                start : function () {
+                    if ( timeoutId === 0 ) { heartbeat(); }
+                },
+                stop : function () {
+                    clearTimeout( timeoutId );
+                    timeoutId = 0;
+                }
+            };
+        }
+
         // hack to get around the fact that if a server connection cannot
         // be established, the peer and its socket property both still have
         // open === true; instead, listen to the wrapped WebSocket
@@ -48,10 +76,10 @@ Polymer({
             me.peer = null;
         };
 
-        this.peer.socket.addEventListener('disconnected',function () {
+        this.peer.socket.ondisconnected = function () {
             logError('disconnected to server');
             me.peer = null;
-        });
+        };
 
         this.peer.socket.onerror = function () {
             logError('error on server');
