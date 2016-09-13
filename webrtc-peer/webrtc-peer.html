@@ -48,10 +48,10 @@ Polymer({
             me.peer = null;
         };
 
-        this.peer.socket.ondisconnected = function () {
+        this.peer.socket.addEventListener('disconnected',function () {
             logError('disconnected to server');
             me.peer = null;
-        };
+        });
 
         this.peer.socket.onerror = function () {
             logError('error on server');
