@@ -77,6 +77,11 @@ Polymer({
             var me=this;
             var call = this.peer.call(this.peerid_tocall, me.stream);
 
+            if(!call){
+                console.log('disconnected:'+this.peer.disconnected);
+                console.log('open:'+this.peer.open);                
+            }
+
             console.log('Initiating call to peer:'+this.peerid_tocall);
             call.on('stream', function(stream) {
                 console.log('received stream from peer');
