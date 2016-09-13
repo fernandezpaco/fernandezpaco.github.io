@@ -40,8 +40,18 @@ Polymer({
         // be established, the peer and its socket property both still have
         // open === true; instead, listen to the wrapped WebSocket
         // and show an error if its readyState becomes CLOSED
-        this.peer.socket._socket.onclose = function () {
+        this.peer.socket.onclose = function () {
             logError('no connection to server');
+            me.peer = null;
+        };
+
+        this.peer.socket.ondisconnected = function () {
+            logError('disconnected to server');
+            me.peer = null;
+        };
+
+        this.peer.socket.onerror = function () {
+            logError('error on server');
             me.peer = null;
         };
 
