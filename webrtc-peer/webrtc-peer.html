@@ -14,7 +14,10 @@ Polymer({
             type: String,
             observer: '_peerid_changed'
         },
-        stream: Object,
+        stream: {
+            type: Object,
+            observer: '_peerid_changed'
+        },
         peer: Object,
         peerid: {
             type: String,
@@ -73,11 +76,12 @@ Polymer({
 
     },
     _peerid_changed: function(){
-        if(this.peerid_tocall && this.peerid_tocall!="" && typeof this.peerid_tocall=="string"){
+        if(this.peerid_tocall && this.stream && this.peerid_tocall!="" && typeof this.peerid_tocall=="string"){
             var me=this;
             var call = this.peer.call(this.peerid_tocall, me.stream);
 
             if(!call){
+                console.log('stream:'+me.stream);
                 console.log('disconnected:'+this.peer.disconnected);
                 console.log('open:'+this.peer.open);                
             }
