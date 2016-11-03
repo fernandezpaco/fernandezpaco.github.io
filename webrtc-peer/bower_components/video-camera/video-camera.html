@@ -2,7 +2,25 @@
 
 <dom-module id="video-camera">
 <template>
-    <video id="videoId" on-tap="snap" style="width:100%"></video>
+    <style>
+        :host {
+        }
+
+        #videoId{
+            width:100%;
+        }
+
+        #videoId[is-pip]{
+            transform-origin: top left;
+            transform: scale(0.2,0.2);
+            position: absolute;
+            transition: transform 0.3s;
+        }
+        #videoId[is-closed]{
+            display: none;
+        }
+    </style>
+    <video id="videoId" on-tap="snap"></video>
     <canvas id="canvas" style="display:none"></canvas>
 </template>
 <script>
@@ -24,7 +42,8 @@ Polymer({
         },
         waitforinput: {
             type: Boolean,
-            value: false
+            value: false,
+            observer: '_wfi_changed'
         }
     },
     attached: function(){
@@ -44,8 +63,20 @@ Polymer({
         // Put video listeners into place
         var me=this;
 
+navigator.getMedia = ( navigator.getUserMedia ||
+                       navigator.webkitGetUserMedia ||
+                       navigator.mozGetUserMedia ||
+                       navigator.msGetUserMedia);
+
+
         if(!this.waitforinput){
-            if(navigator.getUserMedia) { // Standard
+                navigator.getMedia(videoObj, function(stream){
+                    me.set('videoelement.src', window.URL.createObjectURL(stream));
+                    me.set('stream', stream);
+                    //video.src=window.URL.createObjectURL(stream);
+                    video.play();
+                }, errBack);
+            /*if(navigator.getUserMedia) { // Standard
                 navigator.getUserMedia(videoObj, function(stream) {
                     me.set('videoelement.src', stream);
                     video.play();
@@ -61,20 +92,41 @@ Polymer({
             else if(navigator.mozGetUserMedia) { // Firefox-prefixed
                 navigator.mozGetUserMedia(videoObj, function(stream){
                     me.set('videoelement.src', window.URL.createObjectURL(stream));
+                    me.set('stream', stream);
                     video.play();
                 }, errBack);
-            }
+            }*/
         }
     },
+    _wfi_changed: function(){
+        if(this.waitforinput)
+            this.$.videoId.setAttribute('is-closed', true);
+    },
     _stream_changed: function(){
-        if(navigator.getUserMedia) { 
-            this.set('videoelement.src', this.stream);
+        if(this.stream){
+            this.$.videoId.removeAttribute('is-closed');
+            if(this.waitforinput){
+                this.set('videoelement.src', window.URL.createObjectURL(this.stream));
+                this.$.videoId.play();
+                /*if(navigator.getUserMedia) { 
+                    this.set('videoelement.src', this.stream);
+                }else{
+                    this.set('videoelement.src', window.URL.createObjectURL(this.stream));
+                }*/
+            }
         }else{
-            this.set('videoelement.src', window.URL.createObjectURL(this.stream));
+            this.$.videoId.setAttribute('is-closed', true);
         }
     },
     snap: function(){
         this.takePicture(true);
+    },
+    pip: function(){
+        if (this.$.videoId.hasAttribute('is-pip')) {
+            this.$.videoId.removeAttribute('is-pip');
+        }else{
+            this.$.videoId.setAttribute('is-pip', true);
+        }
     },
     takePicture: function(actually){
         if(actually){
