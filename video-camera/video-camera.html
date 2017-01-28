@@ -1,8 +1,26 @@
-<link rel="import" href="bower_components/polymer/polymer.html">
+<link rel="import" href="../polymer/polymer.html">
 
 <dom-module id="video-camera">
 <template>
-    <video id="video" on-tap="takePicture"></video>
+    <style>
+        :host {
+        }
+
+        #videoId{
+            width:100%;
+        }
+
+        #videoId[is-pip]{
+            transform-origin: top left;
+            transform: scale(0.2,0.2);
+            position: absolute;
+            transition: transform 0.3s;
+        }
+        #videoId[is-closed]{
+            display: none;
+        }
+    </style>
+    <video id="videoId" on-tap="snap"></video>
     <canvas id="canvas" style="display:none"></canvas>
 </template>
 <script>
@@ -12,54 +30,124 @@ Polymer({
         screenshot: {
             type: String,
             notify: true
+        },
+        videoelement: {
+            type: Object,
+            notify: true
+        },
+        stream: {
+            type: Object,
+            notify: true,
+            observer: '_stream_changed'           
+        },
+        waitforinput: {
+            type: Boolean,
+            value: false,
+            observer: '_wfi_changed'
         }
     },
-    ready: function(){
+    attached: function(){
         // Grab elements, create settings, etc.
         var canvas = this.$.canvas;
 
+        var video = this.$.videoId;
+
+        this.videoelement = video;
+
         var context = canvas.getContext("2d"),
-        video = this.$.video,
         videoObj = { "video": true },
         errBack = function(error) {
             console.log("Video capture error: ", error.code); 
         };
 
         // Put video listeners into place
-        if(navigator.getUserMedia) { // Standard
-            navigator.getUserMedia(videoObj, function(stream) {
-                video.src = stream;
-                video.play();
-            }, errBack);
-        } else if(navigator.webkitGetUserMedia) { // WebKit-prefixed
-            navigator.webkitGetUserMedia(videoObj, function(stream){
-                video.src = window.URL.createObjectURL(stream);
-                video.play();
-            }, errBack);
-        }
-        else if(navigator.mozGetUserMedia) { // Firefox-prefixed
-            navigator.mozGetUserMedia(videoObj, function(stream){
-                video.src = window.URL.createObjectURL(stream);
-                video.play();
-            }, errBack);
-        }
+        var me=this;
 
+navigator.getMedia = ( navigator.getUserMedia ||
+                       navigator.webkitGetUserMedia ||
+                       navigator.mozGetUserMedia ||
+                       navigator.msGetUserMedia);
+
+
+        if(!this.waitforinput){
+                navigator.getMedia(videoObj, function(stream){
+                    me.set('videoelement.src', window.URL.createObjectURL(stream));
+                    me.set('stream', stream);
+                    //video.src=window.URL.createObjectURL(stream);
+                    video.play();
+                }, errBack);
+            /*if(navigator.getUserMedia) { // Standard
+                navigator.getUserMedia(videoObj, function(stream) {
+                    me.set('videoelement.src', stream);
+                    video.play();
+                }, errBack);
+            } else if(navigator.webkitGetUserMedia) { // WebKit-prefixed
+                navigator.webkitGetUserMedia(videoObj, function(stream){
+                    me.set('videoelement.src', window.URL.createObjectURL(stream));
+                    me.set('stream', stream);
+                    //video.src=window.URL.createObjectURL(stream);
+                    video.play();
+                }, errBack);
+            }
+            else if(navigator.mozGetUserMedia) { // Firefox-prefixed
+                navigator.mozGetUserMedia(videoObj, function(stream){
+                    me.set('videoelement.src', window.URL.createObjectURL(stream));
+                    me.set('stream', stream);
+                    video.play();
+                }, errBack);
+            }*/
+        }
     },
-    takePicture: function(e){
-        var canvas = this.$.canvas;
-        var videoObj = this.$.video;
+    _wfi_changed: function(){
+        if(this.waitforinput)
+            this.$.videoId.setAttribute('is-closed', true);
+    },
+    _stream_changed: function(){
+        if(this.stream){
+            this.$.videoId.removeAttribute('is-closed');
+            if(this.waitforinput){
+                this.set('videoelement.src', window.URL.createObjectURL(this.stream));
+                this.$.videoId.play();
+                /*if(navigator.getUserMedia) { 
+                    this.set('videoelement.src', this.stream);
+                }else{
+                    this.set('videoelement.src', window.URL.createObjectURL(this.stream));
+                }*/
+            }
+        }else{
+            this.$.videoId.setAttribute('is-closed', true);
+        }
+    },
+    snap: function(){
+        this.takePicture(true);
+    },
+    hide: function(){
+        this.$.videoId.setAttribute('is-closed', true);
+    },
+    pip: function(){
+        if (this.$.videoId.hasAttribute('is-pip')) {
+            this.$.videoId.removeAttribute('is-pip');
+        }else{
+            this.$.videoId.setAttribute('is-pip', true);
+        }
+    },
+    takePicture: function(actually){
+        if(actually){
+            var canvas = this.$.canvas;
+            var videoObj = this.$.videoId;
 
-        var context = canvas.getContext('2d');
+            var context = canvas.getContext('2d');
 
-        videoObj.setAttribute('width', videoObj.clientWidth);
-        videoObj.setAttribute('height', videoObj.clientHeight);
+            videoObj.setAttribute('width', videoObj.clientWidth);
+            videoObj.setAttribute('height', videoObj.clientHeight);
 
-        canvas.width = videoObj.clientWidth;
-        canvas.height = videoObj.clientHeight;
-        
-        context.drawImage(videoObj, 0, 0, canvas.width, canvas.height);
+            canvas.width = videoObj.clientWidth;
+            canvas.height = videoObj.clientHeight;
+            
+            context.drawImage(videoObj, 0, 0, canvas.width, canvas.height);
 
-        this.screenshot = canvas.toDataURL('image/png');     
+            this.screenshot = canvas.toDataURL('image/png');   
+        }  
     }
 });
 </script>
