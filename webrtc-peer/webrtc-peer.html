@@ -39,6 +39,7 @@ Polymer({
         peer: Object,
         peerjskey: {
             type: String,
+            value: 'qchxtttyju5cow29',
             observer: 'start_peer'
         },
         peerjsrv: {
@@ -80,6 +81,7 @@ Polymer({
             //Connection to public peerjs
             this.peer = new Peer({
                 key: this.peerjskey,
+                port: 443,
                 config : this.iceconfig
             });  
         }
