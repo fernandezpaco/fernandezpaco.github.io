@@ -1,4 +1,4 @@
-<link rel="import" href="bower_components/polymer/polymer.html">
+<link rel="import" href="../polymer/polymer.html">
 <script src="js/peer.0.3.min.js"></script>
 
 <dom-module id="webrtc-peer">
@@ -39,21 +39,35 @@ Polymer({
         peer: Object,
         peerjskey: {
             type: String,
-            value: 'qchxtttyju5cow29',
             observer: 'start_peer'
         },
         peerjsrv: {
             type: String,
             observer: 'start_peer'
         },
+        peerjsrvport: {
+            value: 9000,
+            type: Number,
+            observer: 'start_peer'
+        },
+        peerjsrvsecure: {
+            value: true,
+            type: Boolean,
+            observer: 'start_peer'
+        },
         iceconfig: {
             type: Object,
             observer: '_iceconfig_changed'
+        },
+        _call: {
+            type: Object
         }
     },
     _iceconfig_changed: function(){
-        if(this.peer)
-            this.peer.config=this.iceconfig;
+        //ON https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/
+        //you can check if the turn server is working
+        if(this.peer && this.peer.options)
+            this.peer.options.config=this.iceconfig;
     },
     connect_to_peer_when_ready: function(){
         if(this.peerid_tocall && this.stream && this.peerid_tocall!="" && typeof this.peerid_tocall=="string"){
@@ -72,8 +86,8 @@ Polymer({
             //Connection to private peerjs
             this.peer = new Peer({
                 host: this.peerjsrv,
-                secure: true,
-                port: 443,
+                secure: this.peerjsrvsecure,
+                port: this.peerjsrvport,
                 debug: 3,
                 config : this.iceconfig
             });
@@ -81,7 +95,7 @@ Polymer({
             //Connection to public peerjs
             this.peer = new Peer({
                 key: this.peerjskey,
-                port: 443,
+                debug: 3,
                 config : this.iceconfig
             });  
         }
@@ -134,24 +148,39 @@ Polymer({
             me.peer = null;
         });*/
 
+        this.peer.on('error', function(err) {
+            console.log('ERRORRR');
+            me._call=null;
+        });
+
         this.peer.on('open', function(id) {
             console.log('My peer ID is: ' + id);
             me.peerid=id;
         });
 
         this.peer.on('call', function(call) {
+            if(me._call){
+                console.log('closing previous call');
+                me._call.close();
+                me._call=null;
+            }
+            me._call=call;
+
             // Answer the call, providing our mediaStream
             console.log('received call from peer, sending my stream');
             call.answer(me.stream);
 
             call.on('stream', function(stream) {
                 console.log('received stream from peer');
-                me.peerstream=stream;
+                me.set('peerstream',stream);
             });     
 
             call.on('close', function(stream) {
                 console.log('closed stream from peer');
-                me.peerstream=null;
+                //me.peerstream=null;
+                me.fire('webrtc-call-closed', {
+                    name: me.peerid_tocall
+                });                
             });     
 
             call.on('error', function(stream) {
@@ -174,34 +203,43 @@ Polymer({
     connect_to_peer: function(){
         //if(this.peerid_tocall && this.stream && this.peerid_tocall!="" && typeof this.peerid_tocall=="string"){
             var me=this;
-            var call = this.peer.call(this.peerid_tocall, me.stream);
+            if(this._call){
+                console.log('closing previous call');
+                /*me.fire('webrtc-call-closed', {
+                    name: me.peerid_tocall
+                });*/
+                this._call.close();
+                this._call=null;
+            }
 
-            if(!call){
+            this._call = this.peer.call(this.peerid_tocall, me.stream);
+
+            if(!this._call){
                 console.log('stream:'+me.stream);
                 console.log('disconnected:'+this.peer.disconnected);
                 console.log('open:'+this.peer.open);                
             }
 
             console.log('Initiating call to peer:'+this.peerid_tocall);
-            call.on('stream', function(stream) {
+            this._call.on('stream', function(stream) {
                 console.log('received stream from peer');
-                me.peerstream=stream;
+                me.set('peerstream',stream);
             });     
 
-            call.on('error', function(err) {
+            this._call.on('error', function(err) {
                 console.log('error');
                 console.log(err);
             });   
 
-            call.on('close', function(call) {
+            this._call.on('close', function(conn) {
                 console.log('call closed');
-                me.peerstream=null;
+                //me.peerstream=null;
                 me.fire('webrtc-call-closed', {
                     name: me.peerid_tocall
                 });
             });
 
-            call.on('disconnected', function(call) {
+            this._call.on('disconnected', function(call) {
                 console.log('call disconnected');
             });
   
