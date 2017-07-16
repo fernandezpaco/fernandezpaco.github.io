@@ -79,7 +79,7 @@ navigator.getMedia = ( navigator.getUserMedia ||
                 }, errBack);
                 }else{
                     navigator.mediaDevices.getUserMedia(videoObj).then( function(stream){
-                        me.set('videoelement.src', window.URL.createObjectURL(stream));
+                        me.set('videoelement.srcObject', stream);
                         me.set('stream', stream);
                         //video.src=window.URL.createObjectURL(stream);
                         video.play();
