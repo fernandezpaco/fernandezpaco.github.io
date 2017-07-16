@@ -70,13 +70,22 @@ navigator.getMedia = ( navigator.getUserMedia ||
 
 
         if(!this.waitforinput){
-                navigator.getMedia(videoObj, function(stream){
-                    me.set('videoelement.src', window.URL.createObjectURL(stream));
-                    me.set('stream', stream);
-                    //video.src=window.URL.createObjectURL(stream);
-                    video.play();
-                }, errBack);
-            /*if(navigator.getUserMedia) { // Standard
+                if(navigator.getMedia){
+                    navigator.getMedia(videoObj, function(stream){
+                        me.set('videoelement.src', window.URL.createObjectURL(stream));
+                        me.set('stream', stream);
+                        //video.src=window.URL.createObjectURL(stream);
+                        video.play();
+                    }, errBack);
+                }else{
+                    navigator.mediaDevices.getUserMedia(videoObj).then( function(stream){
+                        me.set('videoelement.srcObject', stream);
+                        me.set('stream', stream);
+                        //video.src=window.URL.createObjectURL(stream);
+                        video.play();
+                    }).catch(errBack);
+
+                }            /*if(navigator.getUserMedia) { // Standard
                 navigator.getUserMedia(videoObj, function(stream) {
                     me.set('videoelement.src', stream);
                     video.play();
