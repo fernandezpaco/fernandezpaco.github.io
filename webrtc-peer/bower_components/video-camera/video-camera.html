@@ -72,7 +72,7 @@ navigator.getMedia = ( navigator.getUserMedia ||
         if(!this.waitforinput){
                 if(navigator.getMedia){
                     navigator.getMedia(videoObj, function(stream){
-                        me.set('videoelement.src', window.URL.createObjectURL(stream));
+                        me.set('videoelement.srcObject', stream);
                         me.set('stream', stream);
                         //video.src=window.URL.createObjectURL(stream);
                         video.play();
