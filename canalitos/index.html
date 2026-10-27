@@ -722,17 +722,24 @@ function pintaJuegos() {
     el('span', { class: 'info' }, el('span', {}, el('span', { class: 'titulo' }, j.nombre), el('span', { class: 'canal' }, j.texto)))))
     : [vacio('Pronto habrá juegos', '')]));
 }
+// Cada juego va en un marco nuevo que entra ya con su src, y al cerrar se cambia por uno vacío. Cambiar el src de un
+// marco ya cargado añade un paso al historial: «Volver» se gastaba en él y el juego se quedaba en blanco (27-oct).
+function cambiaMarco(src) {
+  const nuevo = $('#jMarco').cloneNode(false);
+  if (src) nuevo.src = src; else nuevo.removeAttribute('src');
+  $('#jMarco').replaceWith(nuevo);
+}
 function abreJuego(j) {
   ir({ j: j.id }, 'push');
   document.body.classList.add('fijo');
   $('#jTitulo').textContent = j.nombre;
-  $('#jMarco').src = `juegos/${j.id}/${j.pagina || 'index.html'}`;
+  cambiaMarco(`juegos/${j.id}/${j.pagina || 'index.html'}`);
   $('#juego').hidden = false;
 }
 function cierraJuego() {
   if ($('#juego').hidden) return;
   $('#juego').hidden = true;
-  $('#jMarco').src = 'about:blank';   // para el juego y su sonido
+  cambiaMarco(null);   // para el juego y su sonido
   document.body.classList.remove('fijo');
 }
 
