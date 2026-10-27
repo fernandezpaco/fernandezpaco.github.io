@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tap the Moles</title>
+<style>
+:root {
+  --s: 300px;
+  --ink: #2f3b1c;
+  --rim: #a8713f;
+  --yellow: #ffd23f;
+  --yellow-d: #dc9e00;
+  --red: #ff4d5e;
+  --blue: #36a3ff;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
+body {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  color: var(--ink);
+  background:
+    repeating-linear-gradient(115deg, rgba(255,255,255,.08) 0 60px, rgba(255,255,255,0) 60px 120px),
+    linear-gradient(#a6e872, #57bb4b 60%, #44a63e);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Marcador y tiempo */
+.hud {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(100% - 24px, max(var(--s), 340px));
+  margin: 10px auto 6px;
+}
+.score {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: .12em;
+  padding: .04em .4em .04em .2em;
+  font-size: clamp(36px, 8vmin, 60px);
+  font-weight: 900;
+  line-height: 1.15;
+  background: #fffdf3;
+  border-radius: 999px;
+  box-shadow: 0 4px 0 rgba(0,0,0,.15);
+}
+.score .icon { width: .95em; height: 1.05em; }
+#score { display: inline-block; min-width: 1.3em; text-align: center; font-variant-numeric: tabular-nums; }
+.timer {
+  flex: 1;
+  height: clamp(18px, 3.4vmin, 28px);
+  background: rgba(255,255,255,.6);
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 0 rgba(0,0,0,.12);
+}
+.fill { height: 100%; background: var(--blue); border-radius: 999px; transform-origin: left center; }
+.timer.mid .fill { background: #ffb020; }
+.timer.low .fill { background: var(--red); animation: pulse .5s infinite alternate; }
+
+/* Campo */
+.stage { flex: 1 1 0; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.grid {
+  width: var(--s);
+  height: var(--s);
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  gap: calc(var(--s) * .02);
+  padding: calc(var(--s) * .025);
+  background: rgba(40,110,30,.18);
+  border-radius: calc(var(--s) * .07);
+  touch-action: none;
+}
+.cell { position: relative; cursor: pointer; }
+.hole {
+  position: absolute;
+  left: 6%; right: 6%; bottom: 5%;
+  height: 30%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 35%, #1e120a 0 45%, #3a2414 70%, #5b3a20 100%);
+  box-shadow: 0 0 0 calc(var(--s) * .012) var(--rim), 0 calc(var(--s) * .012) 0 calc(var(--s) * .012) rgba(0,0,0,.18);
+}
+/* El recorte sigue el borde de delante del agujero: el topo sale de dentro */
+.pit {
+  position: absolute;
+  left: 6%; right: 6%; top: 0; bottom: 5%;
+  overflow: hidden;
+  border-radius: 0 0 50% 50% / 0 0 15.8% 15.8%;
+}
+.mover {
+  position: absolute;
+  left: 8%; right: 8%; bottom: 0;
+  height: 82%;
+  transform: translateY(106%);
+  transition: transform .15s ease-in;
+}
+.cell.up .mover { transform: translateY(0); transition: transform .12s cubic-bezier(.3, 1.5, .6, 1); }
+.sprite { width: 100%; height: 100%; transform-origin: 50% 100%; }
+.art { display: block; width: 100%; height: 100%; }
+.sprite .bomb, .cell.is-bomb .sprite .mole { display: none; }
+.cell.is-bomb .sprite .bomb { display: block; }
+.eyes-hit { display: none; }
+.cell.hit .eyes { display: none; }
+.cell.hit .eyes-hit { display: inline; }
+.cell.hit .sprite { animation: bonk .22s ease-out forwards; }
+.cell.boom .sprite { animation: boom .25s ease-out forwards; }
+.spark { transform-box: fill-box; transform-origin: center; animation: flick .18s infinite alternate; }
+
+.pop {
+  position: absolute;
+  left: 50%; top: 4%;
+  z-index: 3;
+  transform: translateX(-50%);
+  font-size: calc(var(--s) * .1);
+  font-weight: 900;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: rise .75s ease-out forwards;
+}
+.pop.good { color: #fff36b; text-shadow: 0 2px 0 #7a4b00, 2px 0 0 #7a4b00, -2px 0 0 #7a4b00, 0 -2px 0 #7a4b00, 0 5px 0 rgba(0,0,0,.2); }
+.pop.bad { color: var(--red); text-shadow: 0 2px 0 #fff, 2px 0 0 #fff, -2px 0 0 #fff, 0 -2px 0 #fff, 0 5px 0 rgba(0,0,0,.2); }
+.burst {
+  position: absolute;
+  left: 20%; top: 12%;
+  width: 60%; height: 60%;
+  z-index: 2;
+  border-radius: 50%;
+  border: calc(var(--s) * .014) solid #fff6a8;
+  pointer-events: none;
+  animation: ring .4s ease-out forwards;
+}
+.burst.bad { border-color: #ff8a3d; }
+
+.flash {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(70px, 22vmin, 170px);
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 6px 0 rgba(0,0,0,.2);
+  pointer-events: none;
+  opacity: 0;
+}
+
+/* Pantallas */
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(30,70,20,.38);
+  animation: fadein .25s ease-out;
+}
+.card {
+  width: min(100%, 440px);
+  max-height: 100%;
+  overflow: auto;
+  padding: clamp(16px, 4vmin, 28px);
+  text-align: center;
+  background: #fffdf3;
+  border-radius: 28px;
+  box-shadow: 0 8px 0 rgba(0,0,0,.12), 0 18px 40px rgba(0,0,0,.25);
+  animation: cardin .3s ease-out;
+}
+h1, h2 { margin: 0 0 .3em; font-size: clamp(30px, 7vmin, 48px); line-height: 1.1; color: #6b3f1d; }
+.hero { --s: clamp(100px, 24vmin, 160px); position: relative; width: var(--s); height: var(--s); margin: 0 auto; }
+.hero .cell { position: absolute; inset: 0; cursor: default; }
+.hero .sprite { animation: bob 1.6s ease-in-out infinite; }
+.rules { margin: 0 0 18px; font-size: clamp(20px, 4.6vmin, 28px); font-weight: 800; }
+.rule { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 6px 0; }
+.ico { flex: none; width: 1.9em; height: 2.1em; }
+.plus { color: #2e9d3a; }
+.minus { color: var(--red); }
+.big {
+  font-size: clamp(64px, 18vmin, 120px);
+  font-weight: 900;
+  line-height: 1;
+  color: #ff9f1c;
+  text-shadow: 0 5px 0 #c96f00;
+}
+.msg { margin: .3em 0 0; font-size: clamp(24px, 5.5vmin, 34px); font-weight: 900; color: #2e9d3a; }
+.best { margin: .3em 0 .9em; font-size: clamp(20px, 4.6vmin, 28px); font-weight: 800; }
+.new { display: inline-block; margin-left: .4em; padding: .05em .6em; font-size: .8em; color: #fff; background: #ff5fa2; border-radius: 999px; }
+.btn {
+  font: inherit;
+  font-size: clamp(26px, 6vmin, 40px);
+  font-weight: 900;
+  color: #5a3600;
+  background: var(--yellow);
+  border: 0;
+  border-radius: 999px;
+  padding: .4em 1.4em;
+  box-shadow: 0 6px 0 var(--yellow-d);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--yellow-d); }
+.btn:disabled { opacity: .45; }
+.btn:focus-visible { outline: 4px solid #2f7dff; outline-offset: 4px; }
+@media (max-height: 420px) { .hero { display: none; } }
+
+@keyframes pulse { to { opacity: .55; } }
+@keyframes bonk { 0% { transform: scale(1, 1); } 35% { transform: scale(1.28, .6); } 100% { transform: scale(1.12, .8); } }
+@keyframes boom { 0% { transform: scale(1); filter: brightness(1); } 40% { transform: scale(1.25); filter: brightness(2.2); } 100% { transform: scale(.85); filter: brightness(1); } }
+@keyframes flick { from { transform: scale(.8) rotate(0deg); } to { transform: scale(1.15) rotate(20deg); } }
+@keyframes rise {
+  0% { transform: translate(-50%, 30%) scale(.5); opacity: 0; }
+  20% { transform: translate(-50%, 0) scale(1.2); opacity: 1; }
+  100% { transform: translate(-50%, -70%) scale(1); opacity: 0; }
+}
+@keyframes fade { 0% { opacity: 0; } 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes ring { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.25); opacity: 0; } }
+@keyframes fadein { from { opacity: 0; } }
+@keyframes cardin { from { transform: scale(.85); opacity: 0; } }
+@keyframes bob { 50% { transform: translateY(5%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .mover, .cell.up .mover { transition: none; }
+  .cell.hit .sprite, .cell.boom .sprite, .hero .sprite, .spark, .timer.low .fill { animation: none; }
+  .pop { animation: fade .75s forwards; }
+  .burst { display: none; }
+  .screen, .card { animation: none; }
+}
+</style>
+</head>
+<body>
+<header class="hud">
+  <div class="score" aria-label="Score"><span class="icon" data-art="mole"></span><span id="score">0</span></div>
+  <div class="timer" id="timer" aria-hidden="true"><div class="fill" id="fill"></div></div>
+</header>
+<main class="stage" id="stage"><div class="grid" id="grid"></div></main>
+<div class="flash" id="flash" aria-hidden="true"></div>
+
+<section class="screen" id="start">
+  <div class="card">
+    <div class="hero" id="hero"></div>
+    <h1>Tap the Moles!</h1>
+    <div class="rules">
+      <p class="rule"><span class="ico" data-art="mole"></span>Tap! <b class="plus">+1</b></p>
+      <p class="rule"><span class="ico" data-art="bomb"></span>No tap! <b class="minus">−1</b></p>
+    </div>
+    <button class="btn" id="startBtn" type="button">Start</button>
+  </div>
+</section>
+
+<section class="screen" id="pause" hidden>
+  <div class="card">
+    <h2>Paused</h2>
+    <button class="btn" id="resumeBtn" type="button">Play</button>
+  </div>
+</section>
+
+<section class="screen" id="end" hidden>
+  <div class="card">
+    <h2>Time's up!</h2>
+    <div class="big" id="endScore">0</div>
+    <p class="msg" id="endMsg"></p>
+    <p class="best">Best: <b id="endBest">0</b><span class="new" id="newBest" hidden>New best!</span></p>
+    <button class="btn" id="againBtn" type="button">Play again</button>
+  </div>
+</section>
+
+<script>
+'use strict';
+
+const ROUND_MS = 30000;
+const GRACE_MS = 150; // un toque justo cuando el topo ya baja también cuenta
+const $ = (id) => document.getElementById(id);
+const grid = $('grid');
+const stage = $('stage');
+const scoreEl = $('score');
+const timerEl = $('timer');
+const fillEl = $('fill');
+const screens = { start: $('start'), pause: $('pause'), end: $('end') };
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+const MOLE_SVG = `<svg class="art mole" viewBox="0 0 100 110" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+<circle cx="21" cy="30" r="10" fill="#6e4529"/><circle cx="79" cy="30" r="10" fill="#6e4529"/>
+<circle cx="21" cy="30" r="5" fill="#e9a77f"/><circle cx="79" cy="30" r="5" fill="#e9a77f"/>
+<path d="M12 110V52a38 38 0 0 1 76 0v58z" fill="#8a5a3b"/>
+<ellipse cx="50" cy="67" rx="21" ry="15" fill="#f3d2b0"/>
+<g class="eyes" fill="#2a1a12"><circle cx="37" cy="46" r="5.5"/><circle cx="63" cy="46" r="5.5"/><circle cx="39" cy="44" r="1.8" fill="#fff"/><circle cx="65" cy="44" r="1.8" fill="#fff"/></g>
+<g class="eyes-hit" fill="none" stroke="#2a1a12" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M32 41l9 5-9 5M68 41l-9 5 9 5"/></g>
+<circle cx="26" cy="61" r="5" fill="#ff8fa3" opacity=".6"/><circle cx="74" cy="61" r="5" fill="#ff8fa3" opacity=".6"/>
+<rect x="46" y="68" width="8" height="7" rx="1.5" fill="#fff"/><path d="M50 68v7" stroke="#d9c7b5" stroke-width="1"/>
+<path d="M42 66q8 5 16 0" fill="none" stroke="#6e4529" stroke-width="2.2" stroke-linecap="round"/>
+<ellipse cx="50" cy="59" rx="8" ry="5.5" fill="#ff6f91"/>
+<ellipse cx="31" cy="99" rx="11" ry="7" fill="#f3d2b0"/><ellipse cx="69" cy="99" rx="11" ry="7" fill="#f3d2b0"/>
+<path d="M27 96v5M31 95v6M35 96v5M65 96v5M69 95v6M73 96v5" stroke="#c99e78" stroke-width="1.6" stroke-linecap="round"/>
+</svg>`;
+
+const BOMB_SVG = `<svg class="art bomb" viewBox="0 0 100 110" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+<path d="M50 40q1-18 16-22" fill="none" stroke="#8a6a3b" stroke-width="4" stroke-linecap="round"/>
+<rect x="40" y="35" width="20" height="12" rx="3" fill="#7c8494"/>
+<circle cx="50" cy="75" r="31" fill="#353a4d" stroke="#1d2030" stroke-width="2"/>
+<ellipse cx="38" cy="62" rx="9" ry="5.5" fill="#fff" opacity=".35" transform="rotate(-35 38 62)"/>
+<g class="spark"><path d="M68 7l2.5 6.7 7-1.2-4.5 5.5 4.5 5.5-7-1.2L68 29l-2.5-6.7-7 1.2 4.5-5.5-4.5-5.5 7 1.2z" fill="#ffb703"/><circle cx="68" cy="18" r="4" fill="#fff3b0"/></g>
+</svg>`;
+
+const CELL_HTML = '<div class="hole"></div><div class="pit"><div class="mover"><div class="sprite">' +
+  MOLE_SVG + BOMB_SVG + '</div></div></div>';
+
+const holes = [];
+let state = 'start'; // start | play | pause | over
+let played = 0;
+let lastFrame = 0;
+let raf = 0;
+let nextSpawn = 0;
+let nextKind = 'mole';
+let lastHole = -1;
+let lastSec = 0;
+let score = 0;
+let best = 0;
+let rounds = 0;
+let streak = 0;
+
+const lerp = (a, b, t) => a + (b - a) * t;
+
+function buildField() {
+  for (let i = 0; i < 9; i++) {
+    const el = document.createElement('div');
+    el.className = 'cell';
+    el.dataset.i = String(i);
+    el.innerHTML = CELL_HTML;
+    grid.append(el);
+    holes.push({ i, el, kind: 'mole', up: false, hit: false, until: 0, downAt: -1e9, freeAt: 0 });
+  }
+  $('hero').innerHTML = '<div class="cell up">' + CELL_HTML + '</div>';
+  for (const el of document.querySelectorAll('[data-art]')) {
+    el.innerHTML = el.dataset.art === 'bomb' ? BOMB_SVG : MOLE_SVG;
+  }
+}
+
+// El campo es cuadrado y cabe entero en el hueco que deja el marcador
+function fit() {
+  const s = Math.floor(Math.min(stage.clientWidth * 0.96, stage.clientHeight * 0.98, 760));
+  document.documentElement.style.setProperty('--s', Math.max(s, 120) + 'px');
+}
+
+// --- Sonido (el AudioContext nace con el primer toque) ---
+let ac = null;
+
+function audio() {
+  if (!ac) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try { ac = new AC(); } catch (e) { return null; }
+  }
+  if (ac.state !== 'running') {
+    const p = ac.resume();
+    if (p && p.catch) p.catch(() => {});
+  }
+  return ac;
+}
+
+function tone(f1, f2, dur, type, vol, delay = 0) {
+  const a = audio();
+  if (!a) return;
+  const t = a.currentTime + delay;
+  const osc = a.createOscillator();
+  const gain = a.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(f1, t);
+  osc.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(gain);
+  gain.connect(a.destination);
+  osc.start(t);
+  osc.stop(t + dur + 0.03);
+}
+
+function noise(dur, vol) {
+  const a = audio();
+  if (!a) return;
+  const len = Math.floor(a.sampleRate * dur);
+  const buf = a.createBuffer(1, len, a.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = a.createBufferSource();
+  const filter = a.createBiquadFilter();
+  const gain = a.createGain();
+  src.buffer = buf;
+  filter.type = 'lowpass';
+  filter.frequency.value = 900;
+  gain.gain.value = vol;
+  src.connect(filter);
+  filter.connect(gain);
+  gain.connect(a.destination);
+  src.start();
+}
+
+const sfx = {
+  hit(n) {
+    const k = 1 + Math.min(n, 10) * 0.05; // la racha sube el tono
+    tone(520 * k, 1100 * k, 0.09, 'square', 0.09);
+    tone(1300 * k, 1700 * k, 0.07, 'sine', 0.08, 0.04);
+  },
+  boom() { noise(0.3, 0.5); tone(170, 55, 0.3, 'sawtooth', 0.12); },
+  miss() { tone(210, 120, 0.08, 'sine', 0.1); },
+  tick() { tone(1050, 1000, 0.035, 'square', 0.035); },
+  go() { tone(660, 660, 0.09, 'triangle', 0.14); tone(990, 990, 0.16, 'triangle', 0.14, 0.1); },
+  end() {
+    [523, 659, 784, 1047].forEach((f, i) => tone(f, f, i === 3 ? 0.4 : 0.15, 'triangle', 0.16, i * 0.13));
+  },
+};
+
+// --- Partida ---
+function startRound() {
+  audio();
+  hideScreens();
+  for (const h of holes) {
+    h.up = false;
+    h.hit = false;
+    h.freeAt = 0;
+    h.downAt = -1e9;
+    h.el.classList.remove('up', 'hit', 'boom');
+  }
+  played = 0;
+  nextSpawn = 700;
+  nextKind = 'mole';
+  lastHole = -1;
+  score = 0;
+  streak = 0;
+  rounds++;
+  showScore(false);
+  drawTimer(ROUND_MS);
+  flash('Go!');
+  sfx.go();
+  run();
+}
+
+function run() {
+  state = 'play';
+  lastFrame = performance.now();
+  raf = requestAnimationFrame(frame);
+}
+
+function frame(now) {
+  if (state !== 'play') return;
+  played += Math.min(now - lastFrame, 100); // tope: un salto largo no se come el tiempo
+  lastFrame = now;
+  const left = ROUND_MS - played;
+  drawTimer(left);
+  if (left <= 0) {
+    endRound();
+    return;
+  }
+  for (const h of holes) if (h.up && played >= h.until) goDown(h);
+  spawn();
+  raf = requestAnimationFrame(frame);
+}
+
+// Más topos a la vez, más cortos y más seguidos según avanza la ronda
+function spawn() {
+  if (played < nextSpawn) return;
+  const t = played / ROUND_MS;
+  const ups = holes.filter((h) => h.up);
+  if (nextKind === 'bomb' && ups.some((h) => h.kind === 'bomb')) nextKind = 'mole';
+  const maxMoles = t < 0.3 ? 1 : t < 0.65 ? 2 : 3;
+  if (nextKind === 'mole' && ups.filter((h) => h.kind === 'mole').length >= maxMoles) return;
+  const free = holes.filter((h) => !h.up && played >= h.freeAt && h.i !== lastHole);
+  if (!free.length) return;
+  popUp(free[Math.floor(Math.random() * free.length)], nextKind, t);
+  nextSpawn = played + lerp(850, 380, t) * (0.75 + Math.random() * 0.5);
+  nextKind = played > 3000 && Math.random() < 0.18 ? 'bomb' : 'mole';
+}
+
+function popUp(h, kind, t) {
+  h.kind = kind;
+  h.up = true;
+  h.hit = false;
+  h.until = played + lerp(1300, 700, t) * (kind === 'bomb' ? 1.4 : 1);
+  h.el.classList.remove('hit', 'boom');
+  h.el.classList.toggle('is-bomb', kind === 'bomb');
+  h.el.classList.add('up');
+  lastHole = h.i;
+}
+
+function goDown(h) {
+  h.up = false;
+  h.downAt = played;
+  h.freeAt = played + 320;
+  h.el.classList.remove('up');
+  if (h.kind === 'mole' && !h.hit) streak = 0;
+}
+
+function onTap(e) {
+  if (state !== 'play') return;
+  const cell = e.target.closest('.cell');
+  if (!cell) return;
+  e.preventDefault();
+  const h = holes[Number(cell.dataset.i)];
+  if (h.hit) return;
+  const late = !h.up && h.kind === 'mole' && played - h.downAt < GRACE_MS;
+  if (!h.up && !late) {
+    sfx.miss();
+    return;
+  }
+  h.hit = true;
+  if (h.kind === 'mole') hitMole(h);
+  else hitBomb(h);
+}
+
+function hitMole(h) {
+  score++;
+  streak++;
+  if (h.up) h.until = played + 220; // deja ver el aplastón antes de bajar
+  h.el.classList.add('hit');
+  effect(h.el, 'good', '+1');
+  sfx.hit(streak);
+  showScore(true);
+}
+
+function hitBomb(h) {
+  const lost = score > 0;
+  score = Math.max(0, score - 1);
+  streak = 0;
+  h.until = played + 200;
+  h.el.classList.add('boom');
+  effect(h.el, 'bad', lost ? '−1' : 'Oops!');
+  shake();
+  sfx.boom();
+  showScore(lost);
+}
+
+function endRound() {
+  state = 'over';
+  cancelAnimationFrame(raf);
+  for (const h of holes) if (h.up) goDown(h);
+  const newBest = rounds > 1 && score > best;
+  best = Math.max(best, score);
+  $('endScore').textContent = String(score);
+  $('endBest').textContent = String(best);
+  $('endMsg').textContent = cheer(score);
+  $('newBest').hidden = !newBest;
+  sfx.end();
+  const btn = $('againBtn');
+  btn.disabled = true;
+  setTimeout(() => showScreen('end'), 600);
+  setTimeout(() => { btn.disabled = false; }, 1400); // evita el toque sin querer al acabar
+}
+
+function cheer(n) {
+  if (n >= 25) return 'Super star!';
+  if (n >= 15) return 'Great job!';
+  if (n >= 5) return 'Good job!';
+  return 'Nice try!';
+}
+
+function pause() {
+  if (state !== 'play') return;
+  state = 'pause';
+  cancelAnimationFrame(raf);
+  showScreen('pause');
+}
+
+function resume() {
+  hideScreens();
+  audio();
+  run();
+}
+
+// --- Pintado ---
+function drawTimer(left) {
+  fillEl.style.transform = 'scaleX(' + Math.max(0, left) / ROUND_MS + ')';
+  timerEl.classList.toggle('mid', left <= 12000 && left > 5000);
+  timerEl.classList.toggle('low', left <= 5000);
+  const sec = Math.ceil(left / 1000);
+  if (sec !== lastSec) {
+    lastSec = sec;
+    if (state === 'play' && sec > 0 && sec <= 5) sfx.tick();
+  }
+}
+
+function showScore(bump) {
+  scoreEl.textContent = String(score);
+  if (bump && !reduceMotion.matches && scoreEl.animate) {
+    scoreEl.animate([{ transform: 'scale(1.4)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'ease-out' });
+  }
+}
+
+function effect(cell, kind, text) {
+  const pop = document.createElement('span');
+  pop.className = 'pop ' + kind;
+  pop.textContent = text;
+  const ring = document.createElement('span');
+  ring.className = 'burst ' + kind;
+  cell.append(ring, pop);
+  setTimeout(() => { pop.remove(); ring.remove(); }, 800);
+}
+
+function shake() {
+  if (reduceMotion.matches || !grid.animate) return;
+  grid.animate([
+    { transform: 'translateX(0)' },
+    { transform: 'translateX(-2%)' },
+    { transform: 'translateX(2%)' },
+    { transform: 'translateX(-1%)' },
+    { transform: 'translateX(0)' },
+  ], { duration: 300 });
+}
+
+function flash(text) {
+  const el = $('flash');
+  if (!el.animate) return;
+  el.textContent = text;
+  const frames = reduceMotion.matches
+    ? [{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 0 }]
+    : [
+      { opacity: 0, transform: 'scale(.4)' },
+      { opacity: 1, transform: 'scale(1.1)', offset: 0.25 },
+      { opacity: 1, transform: 'scale(1)', offset: 0.6 },
+      { opacity: 0, transform: 'scale(1.3)' },
+    ];
+  el.animate(frames, { duration: 900, easing: 'ease-out' });
+}
+
+function showScreen(name) {
+  for (const k of Object.keys(screens)) screens[k].hidden = k !== name;
+}
+
+function hideScreens() {
+  for (const k of Object.keys(screens)) screens[k].hidden = true;
+}
+
+// --- Arranque ---
+buildField();
+fit();
+if ('ResizeObserver' in window) new ResizeObserver(fit).observe(stage);
+window.addEventListener('resize', fit);
+grid.addEventListener('pointerdown', onTap);
+$('startBtn').addEventListener('click', startRound);
+$('againBtn').addEventListener('click', startRound);
+$('resumeBtn').addEventListener('click', resume);
+document.addEventListener('pointerdown', audio, { once: true });
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+// Con la pestaña oculta el tiempo no corre
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+</script>
+</body>
+</html>

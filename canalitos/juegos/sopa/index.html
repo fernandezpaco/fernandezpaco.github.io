@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Word Search</title>
+  <!-- Sopa de letras de Canalitos sobre wordfind.js y wordfindgame.js (Bill / BunKat LLC y Lucas-C, MIT, ver LICENSE;
+       github.com/bunkat/wordfind @ 579ef5a). La página y las listas de palabras son nuestras. jQuery 2.1.0 (MIT). -->
+  <style>
+    :root { --fondo: #fff7ec; --tinta: #2a2320; --suave: #7a6a60; --acento: #ff6b4a; --borde: #f1e3d2; --bien: #2f9e5b; --tarjeta: #fff; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--fondo); color: var(--tinta); font-family: ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+                 -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+    body { padding: 12px 12px 24px; }
+    h1 { margin: 0 0 10px; font-size: 24px; text-align: center; }
+    .listas { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+    .listas::-webkit-scrollbar { display: none; }
+    .listas button { flex: none; border: 2px solid var(--borde); background: var(--tarjeta); color: var(--tinta); border-radius: 999px;
+                     padding: 8px 14px; font: inherit; font-weight: 800; font-size: 15px; }
+    .listas button.on { border-color: var(--acento); color: var(--acento); }
+    #puzzle { margin: 12px auto; width: fit-content; touch-action: none; }
+    #puzzle > div { display: flex; }
+    .puzzleSquare { width: var(--lado, 36px); height: var(--lado, 36px); margin: 1px; padding: 0; border: 0; border-radius: 8px;
+                    background: var(--tarjeta); color: var(--tinta); font: inherit; font-size: calc(var(--lado, 36px) * .55); font-weight: 800;
+                    text-transform: uppercase; touch-action: none; }
+    .puzzleSquare.selected { background: #ffd23f; }
+    .puzzleSquare.found { background: #8ac926; color: #fff; }
+    .puzzleSquare.solved { background: #9ad1ff; }
+    .puzzleSquare.complete { background: var(--bien); color: #fff; }
+    #words { list-style: none; margin: 0 auto; padding: 0; max-width: 560px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    #words input { border: 0; border-radius: 10px; padding: 6px 10px; background: var(--tarjeta); color: var(--tinta);
+                   font: inherit; font-weight: 800; font-size: 17px; text-transform: uppercase; text-align: center; pointer-events: none; }
+    #words input.wordFound { background: #8ac926; color: #fff; text-decoration: line-through; }
+    .botones { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
+    .botones button { border: 0; border-radius: 14px; padding: 12px 20px; font: inherit; font-weight: 800; font-size: 16px; background: var(--acento); color: #fff; }
+    .botones button.suave { background: var(--tarjeta); color: var(--tinta); }
+    #bien { display: none; text-align: center; font-size: 26px; font-weight: 800; color: var(--bien); margin: 8px 0 0; }
+    #bien.si { display: block; animation: salta .5s; }
+    @keyframes salta { 50% { transform: scale(1.25); } }
+    @media (prefers-color-scheme: dark) {
+      :root { --fondo: #1c1917; --tinta: #f6efe8; --suave: #b3a59a; --borde: #3a322c; --tarjeta: #292420; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Word Search 🔎</h1>
+  <div class="listas" id="listas"></div>
+  <div id="puzzle"></div>
+  <ul id="words"><li id="fin" hidden></li></ul>
+  <p id="bien">You found them all! 🎉</p>
+  <div class="botones">
+    <button id="nueva">New puzzle</button>
+    <button id="ayuda" class="suave">Show me</button>
+  </div>
+
+  <script src="jquery-2.1.0.min.js"></script>
+  <script src="wordfind.js"></script>
+  <script src="wordfindgame.js"></script>
+  <script>
+  'use strict';
+  // Las palabras del colegio (Form 2, Week 6, las mismas de Lluvia de Letras) y unas listas de vocabulario
+  const LISTAS = {
+    'Week 6': ['eight', 'weight', 'reign', 'wait', 'survey', 'disobey', 'neighbour', 'remainder', 'calculate', 'they'],
+    'Animals': ['cat', 'dog', 'lion', 'tiger', 'zebra', 'horse', 'mouse', 'snake', 'shark', 'whale'],
+    'Colours': ['red', 'blue', 'green', 'pink', 'black', 'white', 'brown', 'grey', 'orange', 'purple'],
+    'Numbers': ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'nine', 'ten', 'twelve'],
+    'Food': ['apple', 'bread', 'milk', 'pizza', 'cake', 'rice', 'egg', 'pasta', 'soup', 'cheese'],
+  };
+  let lista = 'Week 6', juego = null;
+
+  function pintaListas() {
+    $('#listas').empty();
+    for (const nombre of Object.keys(LISTAS))
+      $('<button>').text(nombre).toggleClass('on', nombre === lista).on('click', () => { lista = nombre; pintaListas(); nueva(); }).appendTo('#listas');
+  }
+  function nueva() {
+    $('#words li:not(#fin)').remove();
+    $('#bien').removeClass('si');
+    // 8 palabras al azar de la lista: en el móvil cabe una rejilla de 9 o 10 letras
+    const palabras = LISTAS[lista].slice().sort(() => Math.random() - 0.5).slice(0, 8);
+    for (const p of palabras) WordFindGame.insertWordBefore($('#fin'), p);
+    $('#words input').attr('readonly', true).attr('tabindex', -1);
+    const largo = Math.max(...palabras.map(p => p.length));
+    juego = new WordFindGame('#puzzle', {
+      height: Math.max(8, largo), width: Math.max(8, largo),
+      orientations: ['horizontal', 'vertical', 'diagonal'],   // sin palabras al revés: más fácil a los 7 años
+      allowedMissingWords: 0, maxGridGrowth: 3, maxAttempts: 50, fillBlanks: true, preferOverlap: false,
+    });
+    $('#words input').each((i, el) => { el.size = el.value.length + 1; });
+    ajusta();
+  }
+  // Que la rejilla quepa a lo ancho, sea de las letras que sea
+  function ajusta() {
+    const columnas = $('#puzzle > div:first-child .puzzleSquare').length || 9;
+    const lado = Math.max(24, Math.min(52, Math.floor((innerWidth - 24) / columnas) - 2));
+    document.getElementById('puzzle').style.setProperty('--lado', lado + 'px');
+  }
+  addEventListener('resize', ajusta);
+  // Al soltar el dedo, mira si ya están todas
+  $(document).on('mouseup touchend', () => setTimeout(() => {
+    if ($('#words input').length && !$('#words input:not(.wordFound)').length) $('#bien').addClass('si');
+  }, 0));
+  $('#nueva').on('click', nueva);
+  $('#ayuda').on('click', () => juego && juego.solve());
+  pintaListas();
+  nueva();
+  </script>
+</body>
+</html>
