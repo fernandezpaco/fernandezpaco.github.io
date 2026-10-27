@@ -393,7 +393,13 @@ const cfg = Object.assign({
   pin: '', clave: '', lineas: CANALES_DE_SALIDA, shorts: false, canales: [],
   lineasVideos: [], sueltos: { canales: [], videos: [] },
 }, lee(K_CFG, {}));
-cfg.quiz = Object.assign({ on: true, idioma: 'en', temas: Q ? Q.TEMAS : [], tabla: 10, voz: true }, cfg.quiz);
+cfg.quiz = Object.assign({ on: true, idioma: 'en', temas: Q ? [...Q.TEMAS] : [], tabla: 10, voz: true }, cfg.quiz);
+// Un tema nuevo (las restas, 27-oct) sale activado también donde ya estaba configurado. `conocidos` son los temas
+// que había cuando los padres guardaron; lo que quitaron entonces sigue quitado
+if (Q) {
+  const conocidos = cfg.quiz.conocidos || ['banderas', 'capitales', 'multiplicaciones', 'rascacielos', 'futbol', 'coches'];
+  cfg.quiz.temas = [...cfg.quiz.temas, ...Q.TEMAS.filter(t => !conocidos.includes(t) && !cfg.quiz.temas.includes(t))];
+}
 const cache = Object.assign({ videos: {} }, lee(K_CACHE, {}));
 const malos = new Set(lee(K_MALOS, []));   // vídeos que YouTube no deja incrustar
 const guardaCfg = () => guarda(K_CFG, cfg);
@@ -709,9 +715,10 @@ function pestana(v) {
   muestra(v);
   scrollTo(0, 0);
 }
-// Quiz por gusto: al acabar, otro; y si toca quiz antes del vídeo siguiente, este ya cuenta
+// Quiz por gusto, en rondas de 10 (pedido por Paco, 27-oct): al acabar, otra; y si toca quiz antes del vídeo
+// siguiente, esta ya cuenta
 function quizSuelto() {
-  const o = { ...cfg.quiz, boton: cfg.quiz.idioma === 'en' ? 'Next quiz ▶' : 'Otro quiz ▶' };
+  const o = { ...cfg.quiz, n: 10, boton: cfg.quiz.idioma === 'en' ? 'Next quiz ▶' : 'Otro quiz ▶' };
   const lanzado = Q?.lanza($('#quizCaja'), o, () => { quizPendiente = false; quizSuelto(); });
   if (!lanzado) $('#quizCaja').replaceChildren(vacio('No hay preguntas', Q ? 'Pide a papá o a mamá que elijan temas en el candado.' : 'El quiz no se ha podido cargar.'));
   $('#quiz').scrollTop = 0;
@@ -943,6 +950,7 @@ function leeAjustesQuiz() {
   cfg.quiz = {
     on: $('#fQuiz').checked, idioma: $('#fIdioma').value, tabla: +$('#fTabla').value, voz: $('#fVoz').checked,
     temas: [...document.querySelectorAll('#fTemas input:checked')].map(i => i.value),
+    conocidos: Q ? [...Q.TEMAS] : [],
   };
   guardaCfg();
   Q?.descarta();   // el quiz que estaba preparado era con lo de antes

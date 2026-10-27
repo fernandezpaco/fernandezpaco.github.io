@@ -1,15 +1,17 @@
-// Canalitos — quiz de 3 preguntas entre vídeo y vídeo. Lo usan index.html y la página de prueba.
-// Las preguntas se montan con los datos de preguntas.json (los genera server/scripts/canalitos_preguntas.py).
+// Canalitos — quiz de 3 preguntas entre vídeo y vídeo (10 en la pestaña Quiz). Lo usan index.html y la página de prueba.
+// Las preguntas se montan con los datos de preguntas.json (los genera server/scripts/canalitos_preguntas.py);
+// las multiplicaciones y las restas, aquí mismo.
 'use strict';
 window.Quiz = (() => {
-  const TEMAS = ['banderas', 'capitales', 'multiplicaciones', 'rascacielos', 'futbol', 'coches'];
+  const TEMAS = ['banderas', 'capitales', 'multiplicaciones', 'restas', 'rascacielos', 'futbol', 'coches'];
   const K_QUIZ = 'canalitos.quiz';   // tema que toca y preguntas ya salidas, para no repetirlas
   const TXT = {
     en: {
-      temas: { banderas: 'Flags', capitales: 'Capitals', multiplicaciones: 'Times tables', rascacielos: 'Skyscrapers', futbol: 'Soccer', coches: 'Car brands' },
+      temas: { banderas: 'Flags', capitales: 'Capitals', multiplicaciones: 'Times tables', restas: 'Subtraction', rascacielos: 'Skyscrapers', futbol: 'Soccer', coches: 'Car brands' },
       bandera: 'Which country has this flag?',
       capital: p => `What is the capital of ${p}?`,
       mult: (a, b) => [`What is ${a} × ${b}?`, `What is ${a} times ${b}?`],
+      resta: (a, b) => [`What is ${a} − ${b}?`, `What is ${a} minus ${b}?`],
       edificio: 'Which building is this?',
       ciudad: 'In which city is it?',
       deDonde: () => 'Which country is this player from?',
@@ -20,15 +22,17 @@ window.Quiz = (() => {
       bien: ['Great!', 'Well done!', 'Yes!', 'Brilliant!'],
       mal: 'Try again!',
       fin: n => ['Good try!', 'Well done!', 'Great job!', 'Perfect!'][n],
+      de: (a, n) => `${a} out of ${n}`,
       seguir: 'Watch the video',
       leer: 'Read it again',
       voz: 'en-GB',
     },
     es: {
-      temas: { banderas: 'Banderas', capitales: 'Capitales', multiplicaciones: 'Multiplicaciones', rascacielos: 'Rascacielos', futbol: 'Fútbol', coches: 'Marcas de coches' },
+      temas: { banderas: 'Banderas', capitales: 'Capitales', multiplicaciones: 'Multiplicaciones', restas: 'Restas', rascacielos: 'Rascacielos', futbol: 'Fútbol', coches: 'Marcas de coches' },
       bandera: '¿De qué país es esta bandera?',
       capital: p => `¿Cuál es la capital de ${p}?`,
       mult: (a, b) => [`¿Cuánto es ${a} × ${b}?`, `¿Cuánto es ${a} por ${b}?`],
+      resta: (a, b) => [`¿Cuánto es ${a} − ${b}?`, `¿Cuánto es ${a} menos ${b}?`],
       edificio: '¿Qué edificio es este?',
       ciudad: '¿En qué ciudad está?',
       deDonde: m => m ? '¿De qué país es esta jugadora?' : '¿De qué país es este jugador?',
@@ -39,6 +43,7 @@ window.Quiz = (() => {
       bien: ['¡Muy bien!', '¡Genial!', '¡Sí!', '¡Bravo!'],
       mal: '¡Prueba otra vez!',
       fin: n => ['¡Buen intento!', '¡Bien hecho!', '¡Muy bien!', '¡Perfecto!'][n],
+      de: (a, n) => `${a} de ${n}`,
       seguir: 'Ver el vídeo',
       leer: 'Leer otra vez',
       voz: 'es-ES',
@@ -88,6 +93,36 @@ window.Quiz = (() => {
     return svg;
   }
 
+  // Restas llevando, de 2 y 3 cifras: el número de cifras de cada uno y que al menos una columna obligue a llevar
+  const TIPOS_RESTA = [[2, 2], [3, 2], [3, 3]];
+  const cifras = n => String(n).split('').reverse().map(Number);   // las unidades primero
+  const entre = (lo, hi) => lo + (Math.random() * (hi - lo + 1) | 0);
+  function resta([ca, cb]) {
+    for (;;) {
+      const a = entre(ca === cb ? 2 * 10 ** (ca - 1) : 10 ** (ca - 1), 10 ** ca - 1);
+      const b = entre(10 ** (cb - 1), Math.min(10 ** cb - 1, a - 2));
+      const x = cifras(a), y = cifras(b);
+      if (y.some((d, k) => d > x[k])) return [a, b];
+    }
+  }
+  // Las falsas salen de los errores de verdad: restar en cada columna la cifra pequeña de la grande (sin llevar),
+  // o llevar y no devolverlo (10 o 100 de más); y si no, ±1 o ±10
+  function eligeResta(a, b) {
+    const r = a - b, x = cifras(a), y = cifras(b), tope = 10 ** String(a).length;
+    const sinLlevar = +x.map((d, k) => Math.abs(d - (y[k] || 0))).reverse().join('');
+    const malas = [...new Set([sinLlevar, r + 10, r + 100, r - 10, r + 1, r - 1])].filter(n => n > 0 && n < tope && n !== r);
+    const falsas = malas[0] === sinLlevar ? [sinLlevar, azar(malas.slice(1))[0]] : azar(malas).slice(0, 2);
+    return { buena: String(r), opciones: azar([r, ...falsas]).map(String) };
+  }
+  // La cuenta en columna, como en el cuaderno
+  function columna(a, b) {
+    return el('div', { class: 'qz-resta', 'aria-hidden': 'true' },
+      el('span'), el('span', {}, String(a)),
+      el('span', { class: 'signo' }, '−'), el('span', {}, String(b)),
+      el('i'),
+      el('span'), el('span', { class: 'hueco' }, '?'));
+  }
+
   // Todas las preguntas posibles de un tema: una clave (para no repetirlas) y cómo montarla
   function catalogo(tema, d, L, tabla) {
     const t = TXT[L];
@@ -109,6 +144,12 @@ window.Quiz = (() => {
         } });
         return out;
       }
+      // La cuenta sale al azar cada vez; las 120 claves solo reparten por igual los tres tipos
+      case 'restas':
+        return TIPOS_RESTA.flatMap(tipo => Array.from({ length: 40 }, (_, i) => ({ k: `r-${tipo.join('')}-${i}`, crea: () => {
+          const [a, b] = resta(tipo), [texto, dice] = t.resta(a, b);
+          return { texto, dice, svg: columna(a, b), ...eligeResta(a, b) };
+        } })));
       case 'rascacielos':
         return d.edificios.flatMap((e, i) => [
           // Sin edificios de la misma ciudad entre las falsas: la foto puede sacar a los vecinos
@@ -142,15 +183,16 @@ window.Quiz = (() => {
   }
   const cuantas = (tema, tabla) => datos ? catalogo(tema, datos, 'en', tabla).length : 0;
 
-  // El tema que toca (van por turnos) y 3 preguntas que no hayan salido; cuando se acaban, vuelta a empezar
+  // El tema que toca (van por turnos) y `o.n` preguntas (3 si no se dice) que no hayan salido; cuando se acaban,
+  // vuelta a empezar
   function monta(o) {
-    const activos = TEMAS.filter(t => o.temas.includes(t));
+    const activos = TEMAS.filter(t => o.temas.includes(t)), n = o.n || 3;
     if (!datos || !activos.length) return null;
     const st = Object.assign({ turno: 0, vistas: {} }, lee(K_QUIZ, {}));
     const tema = activos[st.turno % activos.length], todas = catalogo(tema, datos, o.idioma, o.tabla);
     let vistas = new Set(st.vistas[tema] || []), libres = todas.filter(x => !vistas.has(x.k));
-    if (libres.length < 3) { vistas = new Set(); libres = todas; }
-    const elegidas = azar(libres).slice(0, 3);
+    if (libres.length < n) { vistas = new Set(); libres = todas; }
+    const elegidas = azar(libres).slice(0, n);
     for (const x of elegidas) vistas.add(x.k);
     st.vistas[tema] = [...vistas];
     st.turno++;
@@ -194,9 +236,11 @@ window.Quiz = (() => {
   // Pinta el quiz en `caja` y llama a `fin` cuando se pulsa el botón final. Sin preguntas, devuelve false.
   function lanza(caja, o, fin) {
     cierra();
-    const q = siguiente && o.temas.includes(siguiente.tema) && siguiente.o.idioma === o.idioma && siguiente.o.tabla === o.tabla
+    // El preparado vale si se hizo con los mismos ajustes; si es de otro tamaño (el de 3 y la ronda de 10), se guarda
+    const mismo = siguiente && (siguiente.o.n || 3) === (o.n || 3);
+    const q = mismo && o.temas.includes(siguiente.tema) && siguiente.o.idioma === o.idioma && siguiente.o.tabla === o.tabla
       ? siguiente : monta(o);
-    siguiente = null;
+    if (mismo) siguiente = null;
     if (!q) return false;
     estilos();
     alAcabar = fin;
@@ -229,7 +273,7 @@ window.Quiz = (() => {
       caja.replaceChildren(el('div', { class: 'qz' },
         el('div', { class: 'qz-cab' },
           el('span', { class: 'qz-tema' }, t.temas[q.tema]),
-          el('span', { class: 'qz-prog', 'aria-label': `${i + 1} / ${q.preguntas.length}` },
+          el('span', { class: 'qz-prog' + (q.preguntas.length > 5 ? ' muchas' : ''), 'aria-label': `${i + 1} / ${q.preguntas.length}` },
             ...q.preguntas.map((_, k) => el('i', { class: k < i ? 'hecha' : k === i ? 'ahora' : null }))),
           o.voz ? el('button', { class: 'qz-voz', 'aria-label': t.leer, svg: VOZ, onclick: () => di(p.dice || p.texto, o) }) : null),
         el('div', { class: 'qz-cuerpo' }, foto,
@@ -241,12 +285,15 @@ window.Quiz = (() => {
       caja.scrollTop = 0;
       di(p.dice || p.texto, o);
     }
+    // Tres estrellas solo con todas bien; con 3 preguntas, una estrella por acierto. Con más, también la nota
     function final() {
+      const n = q.preguntas.length, estrellas = aciertos === n ? 3 : Math.min(2, Math.round(aciertos * 3 / n));
       caja.replaceChildren(el('div', { class: 'qz qz-final' },
-        el('div', { class: 'qz-estrellas', 'aria-label': `${aciertos} / 3` }, ...[0, 1, 2].map(k => el('span', { class: k < aciertos ? 'on' : null }, '★'))),
-        el('h2', { class: 'qz-pregunta' }, t.fin(aciertos)),
+        el('div', { class: 'qz-estrellas', 'aria-label': `${aciertos} / ${n}` }, ...[0, 1, 2].map(k => el('span', { class: k < estrellas ? 'on' : null }, '★'))),
+        n > 3 ? el('p', { class: 'qz-nota' }, `${aciertos} / ${n}`) : null,
+        el('h2', { class: 'qz-pregunta' }, t.fin(estrellas)),
         el('button', { class: 'qz-seguir', onclick: () => { const f = alAcabar; cierra(); f?.(); } }, o.boton || t.seguir + ' ▶')));
-      di(t.fin(aciertos), o);
+      di((n > 3 ? t.de(aciertos, n) + '. ' : '') + t.fin(estrellas), o);
     }
     pregunta();
     return true;
@@ -269,6 +316,8 @@ window.Quiz = (() => {
 .qz-prog i { width: 12px; height: 12px; border-radius: 50%; background: var(--borde); }
 .qz-prog i.hecha { background: var(--acento); }
 .qz-prog i.ahora { background: var(--acento); outline: 3px solid color-mix(in srgb, var(--acento) 35%, transparent); }
+.qz-prog.muchas { gap: 5px; }
+.qz-prog.muchas i { width: 9px; height: 9px; }
 .qz-voz { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--tarjeta); color: var(--tinta); box-shadow: var(--sombra); }
 .qz-voz svg { width: 22px; height: 22px; }
 .qz-cuerpo, .qz-lado { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -278,6 +327,10 @@ window.Quiz = (() => {
 .qz-foto.dibujo img { filter: drop-shadow(0 1px 4px rgba(0,0,0,.25)); }
 .qz-foto svg { width: 100%; height: 100%; fill: var(--acento); }
 .qz-foto svg .otra { fill: color-mix(in srgb, var(--acento) 55%, var(--tinta)); }
+.qz-resta { display: grid; grid-template-columns: auto auto; column-gap: .3em; justify-items: end; align-items: center; color: var(--tinta);
+            font-size: clamp(44px, 12vw, 72px); font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: .1em; }
+.qz-resta i { grid-column: 1 / -1; justify-self: stretch; height: 5px; margin: 4px 0 6px; border-radius: 3px; background: var(--tinta); }
+.qz-resta .signo, .qz-resta .hueco { color: var(--acento); }
 .qz-pie { margin: 0; font-weight: 800; font-size: 17px; color: var(--suave); }
 .qz-pregunta { margin: 0; font-size: clamp(22px, 5.6vw, 30px); line-height: 1.2; font-weight: 800; text-wrap: balance; }
 .qz-ops { display: grid; gap: 10px; }
@@ -291,6 +344,7 @@ window.Quiz = (() => {
 .qz-final { justify-content: center; align-items: center; text-align: center; gap: 18px; }
 .qz-estrellas { display: flex; gap: 6px; font-size: 64px; line-height: 1; color: var(--borde); }
 .qz-estrellas .on { color: #f5b301; }
+.qz-nota { margin: 0; font-size: 44px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .qz-seguir { background: var(--acento); color: #fff; border: 0; border-radius: 999px; padding: 16px 32px; font: inherit; font-size: 20px; font-weight: 800; cursor: pointer; }
 .qz button:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
 @keyframes qz-sacude { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
