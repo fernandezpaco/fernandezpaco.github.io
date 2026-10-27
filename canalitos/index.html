@@ -1,0 +1,1012 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- YouTube exige saber desde qué web se incrusta el vídeo (sin Referer da el error 153) -->
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="theme-color" content="#ff6b4a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Canalitos">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Canalitos</title>
+<style>
+:root {
+  --fondo: #fff7ec; --tarjeta: #fff; --tinta: #2a2320; --suave: #7a6a60;
+  --acento: #ff6b4a; --borde: #f1e3d2; --error-fondo: #ffe3dc; --error-tinta: #8a2a12; --bien: #2f9e5b;
+  --sombra: 0 1px 0 rgba(80,40,0,.05), 0 6px 18px rgba(80,40,0,.08);
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --fondo: #1c1917; --tarjeta: #292420; --tinta: #f6efe8; --suave: #b3a59a; --borde: #3a322c;
+          --error-fondo: #4a2118; --error-tinta: #ffd2c4; --bien: #5ccf8a; --sombra: 0 1px 0 rgba(0,0,0,.3); }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--fondo); color: var(--tinta); -webkit-tap-highlight-color: transparent; }
+body { min-height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+body.fijo { overflow: hidden; }
+button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+svg { fill: currentColor; display: block; }
+
+/* ── Portada: canales y vídeos ── */
+.cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 14px 16px 4px; }
+h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -.5px; }
+h1 span { color: var(--acento); }
+.candado { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--suave); opacity: .55; }
+.candado svg { width: 22px; height: 22px; }
+.buscar { flex: 1; max-width: 560px; position: relative; display: flex; align-items: center; }
+.buscar .lupa { position: absolute; left: 15px; width: 20px; height: 20px; color: var(--suave); pointer-events: none; }
+#q { width: 100%; height: 48px; padding: 0 46px; border-radius: 999px; border: 2px solid var(--borde); background: var(--tarjeta);
+     color: var(--tinta); font: inherit; font-size: 17px; font-weight: 600; -webkit-appearance: none; appearance: none; }
+#q::placeholder { color: var(--suave); font-weight: 500; }
+#q:focus { outline: none; border-color: var(--acento); }
+#q::-webkit-search-cancel-button { display: none; }
+#btnBorrar { position: absolute; right: 6px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: var(--suave); }
+#btnBorrar svg { width: 18px; height: 18px; }
+@media (max-width: 640px) { .buscar { order: 3; flex-basis: 100%; max-width: none; } }   /* en el móvil, debajo del título */
+
+#canales { display: flex; gap: 10px; overflow-x: auto; padding: 10px 16px 14px; scrollbar-width: none; }
+#canales::-webkit-scrollbar { display: none; }
+.chip { flex: none; width: 78px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.chip img, .chip .todos { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 3px solid transparent; background: var(--borde); }
+.chip .todos { display: grid; place-items: center; color: var(--acento); }
+.chip .todos svg { width: 28px; height: 28px; }
+.chip.on img, .chip.on .todos { border-color: var(--acento); }
+.chip > span { width: 100%; overflow-wrap: anywhere; font-size: 12px; font-weight: 700; line-height: 1.15; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.chip.on > span { color: var(--acento); }
+
+#lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; padding: 4px 16px 40px; }
+.video { display: block; width: 100%; text-align: left; background: var(--tarjeta); border-radius: 18px; overflow: hidden; box-shadow: var(--sombra); transition: transform .1s; }
+.video:active, .fila:active { transform: scale(.97); }
+.mini { position: relative; display: block; aspect-ratio: 16/9; background: #000; }
+.mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dur { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,.78); color: #fff; font-size: 12px; font-weight: 700; padding: 2px 7px; border-radius: 8px; }
+.info { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px 14px; }
+.info img { width: 32px; height: 32px; border-radius: 50%; flex: none; }
+.titulo { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 700; font-size: 15px; line-height: 1.25; }
+.canal { display: block; font-size: 12px; color: var(--suave); margin-top: 3px; }
+.vacio { grid-column: 1 / -1; text-align: center; padding: 70px 20px; color: var(--suave); }
+.vacio b { display: block; font-size: 22px; color: var(--tinta); margin-bottom: 8px; overflow-wrap: anywhere; }
+.vacio .boton { margin-top: 10px; padding: 12px 20px; }
+#estado { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 5;
+          background: var(--tinta); color: var(--fondo); padding: 8px 16px; border-radius: 999px; font-size: 14px; font-weight: 700; white-space: nowrap; }
+
+/* ── Reproductor ── */
+#reproductor { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; background: #12100f; color: #fff;
+               padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.rp-cab { display: flex; align-items: center; gap: 12px; padding: 10px 12px; flex: none; }
+.volver { flex: none; background: rgba(127,127,127,.2); border-radius: 999px; padding: 10px 18px; font-weight: 800; font-size: 16px; }
+#rpTitulo { min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rp-cuerpo { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+.rp-video { flex: none; display: flex; flex-direction: column; background: #000; }
+.marco { position: relative; width: 100%; aspect-ratio: 16/9; margin: 0 auto; background: #000; }
+#yt { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+/* El escudo tapa el vídeo para que no se pueda tocar el título, el logo ni las
+   recomendaciones de YouTube (todas llevan fuera de la app). Los mandos son nuestros. */
+#escudo { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+#escudo > div { position: absolute; left: 0; right: 0; pointer-events: auto; display: grid; place-items: center; }
+#escudo .arriba { top: 0; height: 25%; }
+#escudo .centro { top: 25%; bottom: 22%; }
+#escudo .abajo { bottom: 0; height: 22%; }
+#escudo.toca .centro { pointer-events: none; }   /* iPhone: el primer play tiene que ser un toque en el propio vídeo */
+#escudo.pausa { background: rgba(0,0,0,.6); }
+#escudo .grande { display: none; width: 84px; height: 84px; border-radius: 50%; background: var(--acento); place-items: center; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
+#escudo .grande svg { width: 44px; height: 44px; margin-left: 5px; }
+#escudo.pausa .grande { display: grid; }
+#escudo .pista { display: none; background: rgba(0,0,0,.75); padding: 6px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; }
+#escudo.toca .pista { display: block; }
+
+#fin { position: absolute; inset: 0; z-index: 3; background: #12100f; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 10px; text-align: center; }
+#fin p { margin: 0; font-size: 20px; font-weight: 800; }
+.otra { background: var(--acento); color: #fff; border-radius: 999px; padding: 10px 22px; font-weight: 800; font-size: 16px; }
+.sig { display: flex; gap: 10px; max-width: 100%; overflow-x: auto; padding: 2px; }
+.sig button { width: min(150px, 30vw); flex: none; display: flex; flex-direction: column; gap: 4px; text-align: left; }
+.sig img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 10px; display: block; }
+.sig span { font-size: 12px; font-weight: 700; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+
+.mandos { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #000; }
+.mandos button { flex: none; width: 48px; height: 48px; border-radius: 50%; background: rgba(255,255,255,.14); display: grid; place-items: center; }
+.mandos button svg { width: 24px; height: 24px; }
+#btnPlay { width: 58px; height: 58px; background: var(--acento); }
+#btnPlay svg { width: 28px; height: 28px; }
+#btnCerrar { display: none; }
+.barra { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#tiempo { font-size: 12px; opacity: .75; font-variant-numeric: tabular-nums; text-align: right; }
+#barra { width: 100%; height: 28px; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; }
+#barra::-webkit-slider-runnable-track { height: 8px; border-radius: 4px; background: linear-gradient(to right, var(--acento) var(--p, 0%), rgba(255,255,255,.25) var(--p, 0%)); }
+#barra::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -8px; border-radius: 50%; background: var(--acento); border: 3px solid #fff; }
+#barra::-moz-range-track { height: 8px; border-radius: 4px; background: linear-gradient(to right, var(--acento) var(--p, 0%), rgba(255,255,255,.25) var(--p, 0%)); }
+#barra::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--acento); border: 3px solid #fff; }
+@media (max-width: 420px) {
+  .mandos { gap: 6px; }
+  .mandos button { width: 44px; height: 44px; }
+  #btnPlay { width: 52px; height: 52px; }
+}
+
+#masVideos { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; align-content: start; padding: 14px 12px 24px; }
+#masVideos h3 { grid-column: 1 / -1; margin: 0; font-size: 16px; }
+.fila { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; transition: transform .1s; }
+.fila .mini { width: 44%; max-width: 180px; flex: none; border-radius: 12px; overflow: hidden; }
+.fila .titulo { font-size: 14px; }
+
+/* Tablet en horizontal: vídeo a la izquierda y la lista a la derecha */
+@media (orientation: landscape) and (min-width: 900px) and (min-height: 521px) {
+  .rp-cuerpo { flex-direction: row; overflow: hidden; }
+  .rp-video { flex: 1; min-width: 0; justify-content: center; }
+  .marco { width: min(100%, calc((100dvh - 170px) * 16 / 9)); }
+  #masVideos { width: min(360px, 34%); flex: none; overflow-y: auto; grid-template-columns: 1fr; }
+}
+/* Móvil en horizontal: toda la pantalla para el vídeo */
+@media (orientation: landscape) and (max-height: 520px) {
+  .rp-cab, #masVideos { display: none; }
+  .rp-cuerpo { overflow: hidden; }
+  .rp-video { flex: 1; justify-content: center; }
+  .marco { width: min(100%, calc((100dvh - 72px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 16 / 9)); }
+  .mandos { padding: 6px 12px; }
+  #btnCerrar { display: grid; }
+}
+.rp-video:fullscreen { justify-content: center; }
+.rp-video:fullscreen .marco { width: min(100vw, calc((100vh - 80px) * 16 / 9)); }
+.rp-video:-webkit-full-screen { justify-content: center; width: 100%; height: 100%; }
+.rp-video:-webkit-full-screen .marco { width: min(100vw, calc((100vh - 80px) * 16 / 9)); }
+
+/* ── Quiz entre vídeo y vídeo (el resto de su estilo va en quiz.js) ── */
+#quiz { position: fixed; inset: 0; z-index: 15; overflow-y: auto; background: var(--fondo); color: var(--tinta);
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+#quiz.encima { z-index: 25; }   /* «Probar un quiz» desde la zona de padres */
+#quiz .padres-cab { padding-bottom: 0; }
+
+/* ── Zona de padres ── */
+#padres { position: fixed; inset: 0; z-index: 20; overflow-y: auto; background: var(--fondo);
+          padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.padres-cab { padding: 12px 16px; }
+.pin { display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 20px 16px; text-align: center; }
+.pin p { margin: 0; font-size: 18px; font-weight: 700; max-width: 320px; min-height: 2.6em; display: grid; place-items: center; }   /* el teclado no se mueve al cambiar el texto */
+.puntos { display: flex; gap: 16px; }
+.puntos i { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--acento); }
+.puntos i.on { background: var(--acento); }
+.sacude { animation: sacude .35s; }
+@keyframes sacude { 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
+.teclado { display: grid; grid-template-columns: repeat(3, 76px); gap: 14px; }
+.teclado button { height: 76px; border-radius: 50%; background: var(--tarjeta); box-shadow: var(--sombra); font-size: 28px; font-weight: 800; }
+#ajustes { max-width: 560px; margin: 0 auto; padding: 0 16px 48px; display: flex; flex-direction: column; gap: 16px; }
+#ajustes h2 { margin: 0; font-size: 24px; }
+#ajustes label { display: flex; flex-direction: column; gap: 6px; font-weight: 700; }
+#ajustes small { font-weight: 400; color: var(--suave); }
+#ajustes input:not([type=checkbox]), #ajustes textarea, #ajustes select { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid var(--borde); background: var(--tarjeta); color: var(--tinta); font: inherit; font-size: 16px; }
+#ajustes textarea { resize: vertical; font-family: ui-monospace, Menlo, monospace; font-size: 15px; }
+#ajustes label.check { flex-direction: row; align-items: center; gap: 10px; font-weight: 600; }
+#ajustes input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--acento); }
+#ajustes fieldset { margin: 0; border: 2px solid var(--borde); border-radius: 14px; padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+#ajustes legend { font-weight: 800; padding: 0 6px; }
+.temas { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+#ajustes .temas label.check { font-weight: 600; }
+.boton { background: var(--acento); color: #fff; border-radius: 14px; padding: 14px; font-weight: 800; font-size: 16px; }
+.boton.suave { background: var(--tarjeta); color: var(--tinta); box-shadow: var(--sombra); }
+.boton:disabled { opacity: .6; }
+#resultado { display: flex; flex-direction: column; gap: 10px; }
+#resultado ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+#resultado li { display: flex; align-items: center; gap: 10px; background: var(--tarjeta); border-radius: 12px; padding: 8px 10px; font-weight: 600; }
+#resultado li img { width: 36px; height: 36px; border-radius: 50%; flex: none; }
+#resultado li.mal { color: var(--error-tinta); background: var(--error-fondo); }
+#resultado li img.foto-video { width: 64px; height: 36px; border-radius: 8px; object-fit: cover; }
+#resultado li small { display: block; color: var(--suave); font-weight: 400; }
+.error { margin: 0; background: var(--error-fondo); color: var(--error-tinta); padding: 12px; border-radius: 12px; font-weight: 600; }
+.nota { margin: 0; font-size: 14px; color: var(--suave); }
+details { background: var(--tarjeta); border-radius: 12px; padding: 12px 14px; }
+summary { font-weight: 700; cursor: pointer; }
+details ol { padding-left: 20px; line-height: 1.5; margin-bottom: 0; }
+</style>
+</head>
+<body>
+
+<header class="cabecera">
+  <h1>Canal<span>itos</span></h1>
+  <form id="buscar" class="buscar" role="search" action="#">
+    <span class="lupa"></span>
+    <input id="q" type="search" placeholder="Buscar vídeos" aria-label="Buscar vídeos" enterkeyhint="search" autocomplete="off">
+    <button id="btnBorrar" type="button" aria-label="Borrar la búsqueda" hidden></button>
+  </form>
+  <button id="btnPadres" class="candado" aria-label="Zona de padres"></button>
+</header>
+<nav id="canales" aria-label="Canales"></nav>
+<main id="lista"></main>
+<div id="estado" hidden></div>
+
+<section id="reproductor" hidden>
+  <div class="rp-cab">
+    <button id="btnVolver" class="volver">← Volver</button>
+    <span id="rpTitulo"></span>
+  </div>
+  <div class="rp-cuerpo">
+    <div class="rp-video">
+      <div class="marco">
+        <div id="yt"></div>
+        <div id="escudo">
+          <div class="arriba"></div>
+          <div class="centro"><span class="grande"></span></div>
+          <div class="abajo"><span class="pista">Toca el vídeo para empezar</span></div>
+        </div>
+        <div id="fin" hidden></div>
+      </div>
+      <div class="mandos">
+        <button id="btnCerrar" aria-label="Volver"></button>
+        <button id="btnAtras" aria-label="Atrás 10 segundos"></button>
+        <button id="btnPlay" aria-label="Reproducir o pausar"></button>
+        <button id="btnAdelante" aria-label="Adelante 10 segundos"></button>
+        <div class="barra">
+          <input id="barra" type="range" min="0" max="1000" value="0" aria-label="Posición del vídeo">
+          <span id="tiempo">0:00 / 0:00</span>
+        </div>
+        <button id="btnFS" aria-label="Pantalla completa"></button>
+      </div>
+    </div>
+    <aside id="masVideos"></aside>
+  </div>
+</section>
+
+<section id="quiz" hidden>
+  <div class="padres-cab"><button id="btnSalirQuiz" class="volver">← Volver</button></div>
+  <div id="quizCaja"></div>
+</section>
+
+<section id="padres" hidden>
+  <div class="padres-cab"><button id="btnSalirPadres" class="volver">← Salir</button></div>
+  <div id="pinPanel" class="pin">
+    <p id="pinTxt"></p>
+    <div id="puntos" class="puntos"><i></i><i></i><i></i><i></i></div>
+    <div id="teclado" class="teclado"></div>
+  </div>
+  <div id="ajustes" hidden>
+    <h2>Zona de padres</h2>
+    <label>Clave de la API de YouTube
+      <input id="fClave" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="AIza…">
+    </label>
+    <label>Canales <small>Uno por línea: el @nombre, el enlace del canal o su ID (empieza por UC).</small>
+      <textarea id="fCanales" rows="8" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="@CanalDeEjemplo&#10;https://www.youtube.com/@OtroCanal"></textarea>
+    </label>
+    <label>Vídeos sueltos <small>Uno por línea: el enlace del vídeo. Se ven solo esos vídeos; el resto de su canal, no.</small>
+      <textarea id="fVideos" rows="5" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://www.youtube.com/watch?v=…&#10;https://youtu.be/…"></textarea>
+    </label>
+    <label class="check"><input id="fShorts" type="checkbox"> Mostrar también los Shorts de los canales</label>
+    <fieldset id="fQuizAjustes">
+      <legend>Quiz entre vídeos</legend>
+      <label class="check"><input id="fQuiz" type="checkbox"> Antes de cada vídeo (menos el primero), 3 preguntas</label>
+      <label>Idioma de las preguntas
+        <select id="fIdioma"><option value="en">English</option><option value="es">Español</option></select>
+      </label>
+      <div id="fTemas" class="temas"></div>
+      <label>Multiplicaciones hasta la tabla del
+        <select id="fTabla"><option>5</option><option>10</option><option>12</option></select>
+      </label>
+      <label class="check"><input id="fVoz" type="checkbox"> Leer las preguntas en voz alta</label>
+      <button id="btnProbarQuiz" class="boton suave">Probar un quiz</button>
+      <p class="nota">Estos cambios se guardan solos.</p>
+    </fieldset>
+    <button id="btnGuardar" class="boton">Guardar y comprobar</button>
+    <div id="resultado"></div>
+    <p class="nota">Para tener lo mismo en otro móvil o tablet, copia los cuadros de canales y de vídeos y pégalos allí.</p>
+    <details>
+      <summary>Cómo sacar la clave (5 minutos)</summary>
+      <ol>
+        <li>Entra en <b>console.cloud.google.com</b> y crea un proyecto (por ejemplo, «Canalitos»).</li>
+        <li>En «APIs y servicios → Biblioteca», busca <b>YouTube Data API v3</b> y dale a «Habilitar».</li>
+        <li>En «Credenciales → Crear credenciales → Clave de API», copia la clave.</li>
+        <li>Edita la clave: en «Restricciones de aplicaciones» elige «Sitios web» y añade <b id="miWeb"></b>. En «Restricciones de API», deja solo YouTube Data API v3.</li>
+        <li>Pégala arriba y dale a «Guardar y comprobar».</li>
+      </ol>
+    </details>
+    <button id="btnCambiarPin" class="boton suave">Cambiar el PIN</button>
+    <p class="nota">Si olvidas el PIN, borra los datos de esta web en los ajustes del navegador y vuelve a configurarla.</p>
+  </div>
+</section>
+
+<script src="quiz.js"></script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const Q = window.Quiz || null;   // si quiz.js no carga, la app sigue sin quiz
+const K_CFG = 'canalitos.cfg', K_CACHE = 'canalitos.cache', K_MALOS = 'canalitos.malos';
+const FRESCO = 30 * 60 * 1000;   // cada canal se vuelve a pedir a YouTube pasada media hora
+const DIA = 24 * 3600 * 1000, MAX_VIDEOS = 500;   // y una vez al día, entero hasta 500 vídeos, para el buscador
+// La lista con la que arranca un dispositivo nuevo (luego se cambia en la zona de padres)
+const CANALES_DE_SALIDA = [
+  '@Numberblocks', '@officialalphablocks', '@BlueyEspanol', '@TheSmurfsEnglish', '@AAtoonsKids', '@DiscoveryKidsLAT',
+  '@natgeokids', '@quizrainbow05',
+];
+
+const IC = {
+  play: '<svg viewBox="0 0 24 24"><path d="M8 5.6v12.8a1 1 0 0 0 1.53.85l10.1-6.4a1 1 0 0 0 0-1.7L9.53 4.75A1 1 0 0 0 8 5.6z"/></svg>',
+  pausa: '<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4.4" height="14" rx="1.3"/><rect x="13.6" y="5" width="4.4" height="14" rx="1.3"/></svg>',
+  atras: '<svg viewBox="0 0 24 24"><path d="M11.5 6.2v11.6L3.6 12zM20.5 6.2v11.6L12.6 12z"/></svg>',
+  adelante: '<svg viewBox="0 0 24 24"><path d="M12.5 6.2v11.6l7.9-5.8zM3.5 6.2v11.6l7.9-5.8z"/></svg>',
+  fs: '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  cerrar: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+  todos: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>',
+  lupa: '<svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M15.5 15.5 20 20" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>',
+  candado: '<svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.2 10.5V8a3.8 3.8 0 0 1 7.6 0v2.5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>',
+};
+
+// ── Datos: todo vive en este dispositivo (localStorage) ──
+function lee(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } }
+function guarda(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
+const cfg = Object.assign({
+  pin: '', clave: '', lineas: CANALES_DE_SALIDA, shorts: false, canales: [],
+  lineasVideos: [], sueltos: { canales: [], videos: [] },
+}, lee(K_CFG, {}));
+cfg.quiz = Object.assign({ on: true, idioma: 'en', temas: Q ? Q.TEMAS : [], tabla: 10, voz: true }, cfg.quiz);
+const cache = Object.assign({ videos: {} }, lee(K_CACHE, {}));
+const malos = new Set(lee(K_MALOS, []));   // vídeos que YouTube no deja incrustar
+const guardaCfg = () => guarda(K_CFG, cfg);
+let filtro = null, busca = '', cargando = false, ultimoError = '';
+
+function el(tag, props, ...hijos) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v == null || v === false) continue;
+    if (k === 'class') n.className = v;
+    else if (k === 'svg') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const h of hijos) if (h != null && h !== false) n.append(h);
+  return n;
+}
+function reloj(s) {
+  s = Math.max(0, Math.floor(s || 0));
+  const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+}
+function segundos(iso) {
+  const m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(iso || '');
+  return m ? (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0) : 0;
+}
+const mini = (id, q) => `https://i.ytimg.com/vi/${id}/${q}default.jpg`;
+const porFecha = (a, b) => (b.fecha || '').localeCompare(a.fecha || '');
+// Los canales enteros y, detrás, los de los vídeos sueltos: de esos solo se ven los vídeos elegidos
+const todosLosCanales = () => [...cfg.canales, ...cfg.sueltos.canales.filter(s => !cfg.canales.some(c => c.id === s.id))];
+const canalPor = id => todosLosCanales().find(c => c.id === id);
+function videosDeCanal(id) {
+  const vistos = new Set();
+  return [...(cache.videos[id]?.items || []), ...cfg.sueltos.videos.filter(v => v.canal === id)]
+    .filter(v => !malos.has(v.id) && !vistos.has(v.id) && vistos.add(v.id))
+    .sort(porFecha);
+}
+const todosLosVideos = () => todosLosCanales().flatMap(c => videosDeCanal(c.id));
+function fichaCanal(it) {
+  const fotos = it.snippet.thumbnails || {};
+  return { id: it.id, titulo: it.snippet.title, foto: (fotos.medium || fotos.default || {}).url || '' };
+}
+const fichaVideo = x => ({ id: x.id, titulo: x.snippet.title, fecha: x.snippet.publishedAt, dur: segundos(x.contentDetails?.duration), canal: x.snippet.channelId });
+
+// ── YouTube Data API v3 ──
+async function api(ruta, params) {
+  const u = new URL('https://www.googleapis.com/youtube/v3/' + ruta);
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
+  u.searchParams.set('key', cfg.clave);
+  const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const e = new Error(j.error?.message || `HTTP ${r.status}`);
+    e.status = r.status;
+    e.motivo = j.error?.errors?.[0]?.reason || '';
+    throw e;
+  }
+  return j;
+}
+function explica(e) {
+  if (e instanceof TypeError) return 'No hay conexión a internet.';
+  const m = e.motivo + ' ' + e.message;
+  if (/keyInvalid|API key not valid/i.test(m)) return 'La clave no es válida. Cópiala otra vez desde Google Cloud.';
+  if (/accessNotConfigured|has not been used|is disabled/i.test(m)) return 'Falta habilitar «YouTube Data API v3» en el proyecto de Google Cloud.';
+  if (/referer|referrer/i.test(m)) return `La clave no deja usar esta web. En Google Cloud, añade ${location.origin}/* a las restricciones de la clave.`;
+  if (/quota/i.test(m)) return 'Se ha gastado la cuota de YouTube de hoy. Mañana vuelve a funcionar.';
+  return 'YouTube responde: ' + e.message;
+}
+
+// Una línea de la lista de canales → qué preguntarle a YouTube
+function interpreta(linea) {
+  let s = linea.trim(), m;
+  try { s = decodeURIComponent(s); } catch {}
+  if ((m = s.match(/(?:^|[^\w-])(UC[\w-]{22})(?![\w-])/))) return { id: m[1] };
+  if ((m = s.match(/@([^\s/?#]+)/))) return { handle: '@' + m[1] };
+  if ((m = s.match(/youtube\.com\/(?:c|user)\/([^\s/?#]+)/i))) return { usuario: m[1] };
+  if (/^[\w.-]+$/.test(s)) return { handle: '@' + s };
+  return {};
+}
+
+async function resuelve(lineas) {
+  const res = lineas.map(linea => ({ linea, q: interpreta(linea) }));
+  const fichas = {};
+  const conId = res.filter(r => r.q.id);
+  for (let i = 0; i < conId.length; i += 50) {
+    const j = await api('channels', { part: 'snippet', maxResults: 50, id: conId.slice(i, i + 50).map(r => r.q.id).join(',') });
+    for (const it of j.items || []) fichas[it.id] = it;
+  }
+  await Promise.all(res.filter(r => !r.q.id && (r.q.handle || r.q.usuario)).map(async r => {
+    let it = null;
+    if (r.q.usuario) it = (await api('channels', { part: 'snippet', forUsername: r.q.usuario })).items?.[0];
+    if (!it) it = (await api('channels', { part: 'snippet', forHandle: r.q.handle || '@' + r.q.usuario })).items?.[0];
+    if (it) { fichas[it.id] = it; r.q.id = it.id; }
+  }));
+  return res.map(({ linea, q }) => {
+    const it = q.id && fichas[q.id];
+    if (it) return { ok: true, linea, canal: fichaCanal(it) };
+    const esVideo = /youtu\.be\/|[?&]v=|\/shorts\//.test(linea);
+    return { ok: false, linea, motivo: esVideo ? 'es un vídeo: ponlo en «Vídeos sueltos»' : 'no lo encuentro. Prueba con el @nombre del canal' };
+  });
+}
+
+// Vídeos sueltos: se ven esos y nada más de su canal
+function idDeVideo(linea) {
+  const s = linea.trim(), m = s.match(/(?:[?&]v=|youtu\.be\/|\/shorts\/|\/embed\/|\/live\/)([\w-]{11})(?![\w-])/);
+  return m ? m[1] : /^[\w-]{11}$/.test(s) ? s : null;
+}
+async function resuelveVideos(lineas) {
+  const res = lineas.map(linea => ({ linea, id: idDeVideo(linea) }));
+  const ids = [...new Set(res.map(r => r.id).filter(Boolean))], fichas = {}, canales = {};
+  for (let i = 0; i < ids.length; i += 50) {
+    const j = await api('videos', { part: 'snippet,contentDetails,status', maxResults: 50, id: ids.slice(i, i + 50).join(',') });
+    for (const x of j.items || []) fichas[x.id] = x;
+  }
+  const idsCanal = [...new Set(Object.values(fichas).map(x => x.snippet.channelId))];
+  for (let i = 0; i < idsCanal.length; i += 50) {
+    const j = await api('channels', { part: 'snippet', maxResults: 50, id: idsCanal.slice(i, i + 50).join(',') });
+    for (const it of j.items || []) canales[it.id] = fichaCanal(it);
+  }
+  return res.map(({ linea, id }) => {
+    const x = id && fichas[id];
+    if (!id) return { ok: false, linea, motivo: 'no parece el enlace de un vídeo' };
+    if (!x) return { ok: false, linea, motivo: 'no existe o es privado' };
+    if (!x.status?.embeddable) return { ok: false, linea, motivo: 'su dueño no deja verlo fuera de YouTube' };
+    if (x.snippet.liveBroadcastContent !== 'none') return { ok: false, linea, motivo: 'es un directo' };
+    const canal = canales[x.snippet.channelId] || { id: x.snippet.channelId, titulo: x.snippet.channelTitle, foto: '' };
+    return { ok: true, linea, video: fichaVideo(x), canal };
+  });
+}
+
+async function listaDeSubidas(playlistId, pageToken) {
+  try {
+    return await api('playlistItems', { part: 'contentDetails', maxResults: 50, playlistId, ...pageToken && { pageToken } });
+  } catch (e) {
+    if (e.status === 404) return null;
+    throw e;
+  }
+}
+
+// Los vídeos del canal, de 50 en 50 (cada página cuesta 2 unidades de cuota). Sin Shorts se usa la lista
+// «UULF» (solo vídeos largos); si el canal no la tiene, la de todo («UU») y se quitan a mano los de un minuto o menos.
+async function videosDe(canal, paginas) {
+  const resto = canal.id.slice(2);
+  let lista = (cfg.shorts ? 'UU' : 'UULF') + resto, quitaCortos = false;
+  let pag = await listaDeSubidas(lista);
+  if (!pag && !cfg.shorts) { lista = 'UU' + resto; quitaCortos = true; pag = await listaDeSubidas(lista); }
+  const lotes = [];
+  for (let n = 1; pag; n++) {
+    const ids = (pag.items || []).map(x => x.contentDetails?.videoId).filter(Boolean);
+    if (ids.length) lotes.push(api('videos', { part: 'snippet,contentDetails,status', maxResults: 50, id: ids.join(',') }));
+    if (n >= paginas || !pag.nextPageToken) break;
+    pag = await listaDeSubidas(lista, pag.nextPageToken);
+  }
+  return (await Promise.all(lotes)).flatMap(v => v.items || [])
+    .filter(x => x.status?.embeddable && x.status.privacyStatus === 'public' && x.snippet?.liveBroadcastContent === 'none')
+    .map(fichaVideo)
+    .filter(x => x.dur > 0 && !(quitaCortos && x.dur <= 60))
+    .sort(porFecha);
+}
+
+// Lo nuevo encima de lo que ya había
+function junta(nuevos, viejos) {
+  const ids = new Set(nuevos.map(v => v.id));
+  return [...nuevos, ...viejos.filter(v => !ids.has(v.id))].sort(porFecha).slice(0, MAX_VIDEOS);
+}
+// Si el navegador se queda sin sitio, se guardan solo los vídeos más nuevos de cada canal
+function guardaCache() {
+  for (let n = MAX_VIDEOS; !guarda(K_CACHE, cache) && n > 50;) {
+    n >>= 1;
+    for (const c of Object.values(cache.videos)) c.items = c.items.slice(0, n);
+  }
+}
+
+async function refrescar(forzar) {
+  if (cargando || !cfg.clave || !cfg.canales.length) return;
+  const ahora = Date.now();
+  const toca = cfg.canales.filter(c => forzar || !cache.videos[c.id] || ahora - cache.videos[c.id].t > FRESCO);
+  if (!toca.length) return;
+  cargando = true;
+  estado('Buscando vídeos nuevos…');
+  pintaLista();
+  // Cada media hora, la primera página; una vez al día (o si el canal es nuevo), el canal entero
+  const res = await Promise.allSettled(toca.map(async c => {
+    const viejo = cache.videos[c.id], entero = !viejo?.hondo || ahora - viejo.hondo > DIA;
+    const items = await videosDe(c, entero ? MAX_VIDEOS / 50 : 1);
+    return entero ? { t: ahora, hondo: ahora, items } : { t: ahora, hondo: viejo.hondo, items: junta(items, viejo.items) };
+  }));
+  const fallos = [];
+  res.forEach((r, i) => {
+    if (r.status === 'fulfilled') cache.videos[toca[i].id] = r.value;
+    else fallos.push(r.reason);
+  });
+  guardaCache();
+  cargando = false;
+  ultimoError = fallos.length ? explica(fallos[0]) : '';
+  if (fallos.length === toca.length) estado(fallos[0] instanceof TypeError ? 'Sin conexión' : 'YouTube no contesta', 5000);
+  else estado('');
+  pintaLista();
+}
+
+let estadoT;
+function estado(msg, ms) {
+  const e = $('#estado');
+  clearTimeout(estadoT);
+  e.textContent = msg;
+  e.hidden = !msg;
+  if (msg && ms) estadoT = setTimeout(() => { e.hidden = true; }, ms);
+}
+
+// ── Portada ──
+function pintaCanales() {
+  const nav = $('#canales');
+  const canales = todosLosCanales();
+  nav.hidden = !canales.length;
+  nav.replaceChildren(chip(null, 'Todos', null), ...canales.map(c => chip(c.id, c.titulo, c.foto)));
+}
+function eligeCanal(id) { filtro = id; pintaCanales(); pintaLista(); scrollTo(0, 0); }
+function chip(id, nombre, foto) {
+  return el('button', { class: 'chip' + (filtro === id ? ' on' : ''), onclick: () => eligeCanal(id) },
+    foto ? el('img', { src: foto, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : el('span', { class: 'todos', svg: IC.todos }),
+    el('span', {}, nombre));
+}
+function vacio(titulo, texto) { return el('div', { class: 'vacio' }, el('b', {}, titulo), texto); }
+// El buscador mira solo lo que ya está guardado (título y nombre del canal), sin preguntar a YouTube:
+// así nunca sale nada de fuera y no gasta cuota. Da igual escribir con o sin tildes y mayúsculas.
+const normal = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+function encuentra(vs, texto) {
+  const palabras = normal(texto).split(/\s+/).filter(Boolean), canales = {};
+  for (const c of todosLosCanales()) canales[c.id] = normal(c.titulo);
+  return vs.map(v => {
+    const t = normal(v.titulo), todo = t + ' ' + (canales[v.canal] || '');
+    return palabras.every(p => todo.includes(p)) && { v, enTitulo: palabras.every(p => t.includes(p)) };
+  }).filter(Boolean)
+    .sort((a, b) => b.enTitulo - a.enTitulo)   // primero los que lo llevan en el título; dentro, del más nuevo al más viejo
+    .map(x => x.v);
+}
+function pintaLista() {
+  const main = $('#lista');
+  if (filtro && !canalPor(filtro)) filtro = null;
+  const canal = filtro && canalPor(filtro), texto = busca.trim();
+  $('#q').placeholder = canal ? 'Buscar en ' + canal.titulo : 'Buscar vídeos';
+  if (!todosLosCanales().length)
+    return main.replaceChildren(vacio('Todavía no hay canales', 'Pide a papá o a mamá que los elijan en el candado de arriba.'));
+  let vs = canal ? videosDeCanal(filtro) : todosLosVideos().sort(porFecha);
+  if (texto) vs = encuentra(vs, texto);
+  if (!vs.length)
+    return main.replaceChildren(cargando ? vacio('Cargando vídeos…', '')
+      : !texto ? vacio('Aquí no hay vídeos', 'Prueba con otro canal.')
+      : canal ? vacio(`No encuentro «${texto}» en ${canal.titulo}`, el('button', { class: 'boton', onclick: () => eligeCanal(null) }, 'Buscar en todos los canales'))
+      : vacio(`No encuentro «${texto}»`, 'Prueba con otra palabra.'));
+  main.replaceChildren(...vs.slice(0, canal ? MAX_VIDEOS : 300).map(v => tarjeta(v, !canal)));
+}
+function tarjeta(v, conCanal) {
+  const c = conCanal && canalPor(v.canal);
+  return el('button', { class: 'video', onclick: () => abre(v, 'push') },
+    el('span', { class: 'mini' }, el('img', { src: mini(v.id, 'hq'), alt: '', loading: 'lazy' }), el('span', { class: 'dur' }, reloj(v.dur))),
+    el('span', { class: 'info' },
+      c?.foto ? el('img', { src: c.foto, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : null,
+      el('span', {}, el('span', { class: 'titulo' }, v.titulo), c ? el('span', { class: 'canal' }, c.titulo) : null)));
+}
+
+// ── Navegación: el botón «atrás» del móvil cierra el reproductor o la zona de padres ──
+function ir(estadoNuevo, modo) {
+  if (modo === 'push') history.pushState(estadoNuevo, '');
+  else if (modo === 'replace') history.replaceState(estadoNuevo, '');
+}
+function atras() {
+  if (history.state) history.back();
+  else { cierraReproductor(); cierraPadres(); }
+}
+addEventListener('popstate', () => {
+  const st = history.state || {};
+  if (!st.v && !$('#reproductor').hidden) cierraReproductor();
+  if (!st.p && !$('#padres').hidden) cierraPadres();
+});
+
+// ── Reproductor ──
+let player = null, listo = false, ytListo = null, actual = null, tic = null, vigia = null, arrastrando = false, listaSucia = false;
+const escudo = $('#escudo'), fin = $('#fin'), barra = $('#barra');
+
+function cargaYT() {
+  if (!ytListo) ytListo = new Promise((ok, ko) => {
+    window.onYouTubeIframeAPIReady = ok;
+    const s = el('script', { src: 'https://www.youtube.com/iframe_api' });
+    s.onerror = () => { ytListo = null; s.remove(); ko(new Error('sin conexión')); };
+    document.head.append(s);
+  });
+  return ytListo;
+}
+
+async function abre(v, modo) {
+  actual = v;
+  ir({ v: v.id }, modo);
+  document.body.classList.add('fijo');
+  $('#reproductor').hidden = false;
+  $('#rpTitulo').textContent = v.titulo;
+  fin.hidden = true;
+  escudo.className = '';
+  pintaPlay(false);
+  barra.value = 0;
+  barra.style.setProperty('--p', '0%');
+  $('#tiempo').textContent = '0:00 / ' + reloj(v.dur);
+  pintaMas();
+  $('.rp-cuerpo').scrollTop = 0;
+  if (quizPendiente) {
+    try { if (listo) player.stopVideo(); } catch {}
+    if (!await pasaQuiz() || actual !== v) return;   // se salió del quiz con «Volver»
+  }
+  try { await cargaYT(); } catch { return muestraFin('No hay conexión a internet', false); }
+  if (actual !== v) return;   // mientras cargaba se eligió otro vídeo o se cerró
+  if (listo) player.loadVideoById(v.id);
+  else if (!player) player = new YT.Player('yt', {
+    host: 'https://www.youtube-nocookie.com',
+    videoId: v.id, width: '100%', height: '100%',
+    playerVars: { autoplay: 1, controls: 0, rel: 0, playsinline: 1, fs: 0, disablekb: 1, iv_load_policy: 3, origin: location.origin },
+    events: {
+      onReady: () => {
+        listo = true;
+        if (!actual) return;
+        if (player.getVideoData?.().video_id !== actual.id) player.loadVideoById(actual.id);
+        else player.playVideo();
+      },
+      onStateChange: cambio,
+      onError: fallo,
+    },
+  });
+  vigila();
+  clearInterval(tic);
+  tic = setInterval(pintaTiempo, 500);
+}
+
+// Si a los 2,5 s no ha arrancado (iPhone bloquea el autoplay), se deja tocar el centro del vídeo.
+function vigila() {
+  clearTimeout(vigia);
+  vigia = setTimeout(() => {
+    const s = listo ? player.getPlayerState() : -1;
+    if ((s === -1 || s === 5) && fin.hidden && actual) escudo.classList.add('toca');
+  }, 2500);
+}
+
+function cambio(e) {
+  if (e.data === YT.PlayerState.PLAYING) {
+    escudo.classList.remove('toca', 'pausa');
+    fin.hidden = true;
+    pintaPlay(true);
+    if (cfg.quiz.on && Q) { quizPendiente = true; Q.prepara(cfg.quiz); }   // el próximo vídeo, con quiz antes
+  }
+  else if (e.data === YT.PlayerState.PAUSED) { escudo.classList.add('pausa'); pintaPlay(false); }
+  else if (e.data === YT.PlayerState.ENDED) { pintaPlay(false); muestraFin('¡Se acabó!', true); }
+}
+
+function fallo(e) {
+  // 100: no existe o es privado; 101 y 150: el dueño no deja verlo fuera de YouTube
+  if ([100, 101, 150].includes(e.data) && actual) { malos.add(actual.id); guarda(K_MALOS, [...malos].slice(-500)); listaSucia = true; }
+  muestraFin('Este vídeo no se puede ver aquí 😕', false);
+}
+
+function muestraFin(texto, otraVez) {
+  clearTimeout(vigia);
+  escudo.classList.remove('toca');
+  fin.replaceChildren(el('p', {}, texto));
+  if (otraVez) fin.append(el('button', { class: 'otra', onclick: () => { fin.hidden = true; player.seekTo(0, true); player.playVideo(); } }, '↻ Otra vez'));
+  const sig = actual ? siguientes(3) : [];
+  if (sig.length) fin.append(el('div', { class: 'sig' }, ...sig.map(v =>
+    el('button', { onclick: () => abre(v, 'replace') }, el('img', { src: mini(v.id, 'mq'), alt: '' }), el('span', {}, v.titulo)))));
+  fin.hidden = false;
+}
+function siguientes(n) {
+  const vs = videosDeCanal(actual.canal), i = vs.findIndex(v => v.id === actual.id), out = [];
+  for (let k = 1; k <= vs.length && out.length < n; k++) {
+    const v = vs[(i + k + vs.length) % vs.length];
+    if (v.id !== actual.id) out.push(v);
+  }
+  return out;
+}
+
+function pintaMas() {
+  const c = canalPor(actual.canal);
+  $('#masVideos').replaceChildren(el('h3', {}, c ? 'Más de ' + c.titulo : 'Más vídeos'),
+    ...videosDeCanal(actual.canal).filter(v => v.id !== actual.id).map(v =>
+      el('button', { class: 'fila', onclick: () => abre(v, 'replace') },
+        el('span', { class: 'mini' }, el('img', { src: mini(v.id, 'mq'), alt: '', loading: 'lazy' }), el('span', { class: 'dur' }, reloj(v.dur))),
+        el('span', { class: 'titulo' }, v.titulo))));
+}
+
+function pintaPlay(sonando) { $('#btnPlay').innerHTML = sonando ? IC.pausa : IC.play; }
+function pintaTiempo() {
+  if (!listo || arrastrando) return;
+  const d = player.getDuration() || actual?.dur || 0, t = player.getCurrentTime() || 0, p = d ? t / d : 0;
+  barra.value = Math.round(p * 1000);
+  barra.style.setProperty('--p', p * 100 + '%');
+  $('#tiempo').textContent = reloj(t) + ' / ' + reloj(d);
+}
+function alternar() {
+  if (!listo || !fin.hidden) return;
+  const s = player.getPlayerState();
+  if (s === 1 || s === 3) player.pauseVideo(); else player.playVideo();
+}
+function salta(dt) { if (listo) player.seekTo(Math.max(0, player.getCurrentTime() + dt), true); }
+
+barra.addEventListener('input', () => {
+  arrastrando = true;
+  const d = (listo && player.getDuration()) || actual?.dur || 0;
+  barra.style.setProperty('--p', barra.value / 10 + '%');
+  $('#tiempo').textContent = reloj(barra.value / 1000 * d) + ' / ' + reloj(d);
+});
+barra.addEventListener('change', () => {
+  const d = listo ? player.getDuration() : 0;
+  if (d) player.seekTo(barra.value / 1000 * d, true);
+  arrastrando = false;
+});
+
+const rv = $('.rp-video');
+const pideFS = rv.requestFullscreen || rv.webkitRequestFullscreen;   // el iPhone no lo tiene: allí basta con girarlo
+const enFS = () => document.fullscreenElement || document.webkitFullscreenElement;
+function pantallaCompleta() {
+  if (enFS()) return salDeFS();
+  Promise.resolve(pideFS.call(rv)).then(() => screen.orientation?.lock?.('landscape')).catch(() => {});
+}
+function salDeFS() { if (enFS()) (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
+
+function cierraReproductor() {
+  cierraQuiz();
+  $('#reproductor').hidden = true;
+  document.body.classList.remove('fijo');
+  clearInterval(tic);
+  clearTimeout(vigia);
+  try { if (listo) player.stopVideo(); } catch {}
+  salDeFS();
+  actual = null;
+  if (listaSucia) { listaSucia = false; pintaLista(); }   // quita de la portada los vídeos que han fallado
+}
+
+// ── Quiz entre vídeo y vídeo: antes de cada vídeo, menos el primero, 3 preguntas (quiz.js) ──
+let quizPendiente = false, salDelQuiz = null;
+// true cuando se acaba el quiz (o no hay), false si se sale con «Volver»
+function pasaQuiz(encima) {
+  return new Promise(ok => {
+    const lanzado = cfg.quiz.on && Q?.lanza($('#quizCaja'), cfg.quiz, () => {
+      salDelQuiz = null;
+      $('#quiz').hidden = true;
+      quizPendiente = false;
+      ok(true);
+    });
+    if (!lanzado) return ok(true);
+    salDelQuiz = () => ok(false);
+    $('#quiz').classList.toggle('encima', !!encima);
+    $('#quiz').hidden = false;
+    $('#quiz').scrollTop = 0;
+  });
+}
+function cierraQuiz() {
+  if ($('#quiz').hidden) return;
+  $('#quiz').hidden = true;
+  Q?.cierra();
+  salDelQuiz?.(false);
+  salDelQuiz = null;
+}
+function pintaAjustesQuiz() {
+  $('#fQuizAjustes').hidden = !Q;
+  if (!Q) return;
+  $('#fQuiz').checked = cfg.quiz.on;
+  $('#fIdioma').value = cfg.quiz.idioma;
+  $('#fTabla').value = String(cfg.quiz.tabla);
+  $('#fVoz').checked = cfg.quiz.voz;
+  const nombres = Q.nombres('es');
+  $('#fTemas').replaceChildren(...Q.TEMAS.map(t => {
+    const n = Q.cuantas(t, cfg.quiz.tabla);
+    return el('label', { class: 'check' }, el('input', { type: 'checkbox', value: t, checked: cfg.quiz.temas.includes(t) }), nombres[t] + (n ? ` (${n})` : ''));
+  }));
+}
+function leeAjustesQuiz() {
+  cfg.quiz = {
+    on: $('#fQuiz').checked, idioma: $('#fIdioma').value, tabla: +$('#fTabla').value, voz: $('#fVoz').checked,
+    temas: [...document.querySelectorAll('#fTemas input:checked')].map(i => i.value),
+  };
+  guardaCfg();
+  Q?.descarta();   // el quiz que estaba preparado era con lo de antes
+  pintaAjustesQuiz();
+}
+
+// ── Zona de padres ──
+let pinTmp = '', pinNuevo = null, cambiandoPin = false, fallosPin = 0, bloqueoHasta = 0;
+
+function abrePadres() {
+  cambiandoPin = false;
+  pinNuevo = null;
+  $('#padres').hidden = false;
+  document.body.classList.add('fijo');
+  ir({ p: 1 }, 'push');
+  muestraPin();
+}
+function cierraPadres() {
+  cierraQuiz();
+  $('#padres').hidden = true;
+  $('#ajustes').hidden = true;
+  document.body.classList.remove('fijo');
+  pinTmp = '';
+}
+function muestraPin() {
+  $('#ajustes').hidden = true;
+  $('#pinPanel').hidden = false;
+  pinTmp = '';
+  pintaPuntos();
+  const creando = !cfg.pin || cambiandoPin;
+  $('#pinTxt').textContent = !creando ? 'Escribe el PIN'
+    : pinNuevo !== null ? 'Repítelo para confirmar'
+    : cfg.pin ? 'Elige el PIN nuevo (4 números)'
+    : 'Hola. Elige un PIN de 4 números para la zona de padres';
+}
+function pintaPuntos() { document.querySelectorAll('#puntos i').forEach((p, i) => p.classList.toggle('on', i < pinTmp.length)); }
+function sacude() { const p = $('#puntos'); p.classList.remove('sacude'); void p.offsetWidth; p.classList.add('sacude'); }
+function tecla(d) {
+  if (Date.now() < bloqueoHasta || pinTmp.length >= 4 && d !== 'borrar') return;
+  pinTmp = d === 'borrar' ? pinTmp.slice(0, -1) : pinTmp + d;
+  pintaPuntos();
+  if (pinTmp.length === 4) setTimeout(compruebaPin, 150);
+}
+function compruebaPin() {
+  if (!cfg.pin || cambiandoPin) {
+    if (pinNuevo === null) { pinNuevo = pinTmp; return muestraPin(); }
+    const iguales = pinNuevo === pinTmp;
+    pinNuevo = null;
+    if (!iguales) { sacude(); return muestraPin(); }
+    cfg.pin = pinTmp;
+    cambiandoPin = false;
+    guardaCfg();
+    return abreAjustes();
+  }
+  if (pinTmp === cfg.pin) { fallosPin = 0; return abreAjustes(); }
+  sacude();
+  pinTmp = '';
+  pintaPuntos();
+  if (++fallosPin >= 5) {
+    fallosPin = 0;
+    bloqueoHasta = Date.now() + 30000;
+    $('#pinTxt').textContent = 'Espera 30 segundos';
+    setTimeout(muestraPin, 30000);
+  }
+}
+
+function abreAjustes() {
+  $('#pinPanel').hidden = true;
+  $('#ajustes').hidden = false;
+  $('#fClave').value = cfg.clave;
+  $('#fCanales').value = cfg.lineas.join('\n');
+  $('#fVideos').value = cfg.lineasVideos.join('\n');
+  $('#fShorts').checked = cfg.shorts;
+  pintaAjustesQuiz();
+  pintaResultado(cfg.canales.map(canal => ({ ok: true, canal })),
+    cfg.sueltos.videos.map(video => ({ ok: true, video, canal: canalPor(video.canal) })), ultimoError);
+}
+function pintaResultado(canales, videos, error) {
+  const r = $('#resultado');
+  r.replaceChildren();
+  if (error) r.append(el('p', { class: 'error' }, error));
+  const bloque = (res, uno, varios, fila) => {
+    if (!res.length) return;
+    const n = res.filter(x => x.ok).length;
+    r.append(el('p', { class: 'nota' }, `${n} ${n === 1 ? uno : varios}` + (n < res.length ? `, ${res.length - n} con problemas` : '')),
+      el('ul', {}, ...res.map(x => x.ok ? fila(x) : el('li', { class: 'mal' }, `✕ «${x.linea}»: ${x.motivo}.`))));
+  };
+  bloque(canales, 'canal entero', 'canales enteros', x => el('li', {},
+    x.canal.foto ? el('img', { src: x.canal.foto, alt: '', referrerpolicy: 'no-referrer' }) : null, el('span', {}, x.canal.titulo)));
+  bloque(videos, 'vídeo suelto', 'vídeos sueltos', x => el('li', {},
+    el('img', { class: 'foto-video', src: mini(x.video.id, 'mq'), alt: '' }),
+    el('span', {}, x.video.titulo, x.canal ? el('small', {}, x.canal.titulo) : null)));
+}
+async function guardar() {
+  const b = $('#btnGuardar');
+  const lineasDe = sel => $(sel).value.split('\n').map(s => s.trim()).filter(Boolean);
+  const clave = $('#fClave').value.trim(), lineas = lineasDe('#fCanales'), lineasVideos = lineasDe('#fVideos');
+  const shorts = $('#fShorts').checked;
+  if (!clave) return pintaResultado([], [], 'Falta la clave de la API de YouTube.');
+  if (shorts !== cfg.shorts) cache.videos = {};
+  Object.assign(cfg, { clave, lineas, lineasVideos, shorts });
+  guardaCfg();
+  b.disabled = true;
+  b.textContent = 'Comprobando…';
+  try {
+    const [res, resVideos] = await Promise.all([resuelve(lineas), resuelveVideos(lineasVideos)]);
+    const ids = new Set(), idsVideo = new Set(), canalesSueltos = new Map();
+    cfg.canales = res.filter(x => x.ok && !ids.has(x.canal.id) && ids.add(x.canal.id)).map(x => x.canal);
+    const sueltos = resVideos.filter(x => x.ok && !idsVideo.has(x.video.id) && idsVideo.add(x.video.id));
+    for (const x of sueltos) canalesSueltos.set(x.canal.id, x.canal);
+    cfg.sueltos = { canales: [...canalesSueltos.values()], videos: sueltos.map(x => x.video) };
+    guardaCfg();
+    for (const id of Object.keys(cache.videos)) if (!ids.has(id)) delete cache.videos[id];
+    guardaCache();
+    ultimoError = '';
+    pintaResultado(res, resVideos);
+    pintaCanales();
+    pintaLista();
+    refrescar(true);
+  } catch (e) {
+    pintaResultado([], [], explica(e));
+  } finally {
+    b.disabled = false;
+    b.textContent = 'Guardar y comprobar';
+  }
+}
+
+// ── Arranque ──
+$('#btnPadres').innerHTML = IC.candado;
+$('#buscar .lupa').innerHTML = IC.lupa;
+$('#btnBorrar').innerHTML = IC.cerrar;
+$('#btnCerrar').innerHTML = IC.cerrar;
+$('#btnAtras').innerHTML = IC.atras;
+$('#btnAdelante').innerHTML = IC.adelante;
+$('#btnFS').innerHTML = IC.fs;
+$('#escudo .grande').innerHTML = IC.play;
+$('#btnFS').hidden = !pideFS;
+$('#miWeb').textContent = location.origin + '/*';
+for (const d of ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'borrar'])
+  $('#teclado').append(d ? el('button', { 'aria-label': d === 'borrar' ? 'Borrar' : d, onclick: () => tecla(d) }, d === 'borrar' ? '⌫' : d) : el('span'));
+
+$('#btnPadres').addEventListener('click', abrePadres);
+$('#btnSalirPadres').addEventListener('click', atras);
+$('#btnVolver').addEventListener('click', atras);
+$('#btnCerrar').addEventListener('click', atras);
+$('#btnPlay').addEventListener('click', alternar);
+$('#btnAtras').addEventListener('click', () => salta(-10));
+$('#btnAdelante').addEventListener('click', () => salta(10));
+$('#btnFS').addEventListener('click', pantallaCompleta);
+$('#btnGuardar').addEventListener('click', guardar);
+let buscaT;
+function buscaYa(texto) {
+  clearTimeout(buscaT);
+  busca = texto;
+  $('#btnBorrar').hidden = !texto;
+  pintaLista();
+  scrollTo(0, 0);
+}
+$('#q').addEventListener('input', e => {
+  $('#btnBorrar').hidden = !e.target.value;
+  clearTimeout(buscaT);
+  buscaT = setTimeout(() => buscaYa(e.target.value), 150);
+});
+$('#buscar').addEventListener('submit', e => { e.preventDefault(); buscaYa($('#q').value); $('#q').blur(); });   // «Buscar» del teclado: lo esconde
+$('#btnBorrar').addEventListener('click', () => { $('#q').value = ''; buscaYa(''); $('#q').focus(); });
+$('#btnCambiarPin').addEventListener('click', () => { cambiandoPin = true; pinNuevo = null; muestraPin(); });
+escudo.addEventListener('click', alternar);
+$('#btnSalirQuiz').addEventListener('click', () => { if ($('#quiz').classList.contains('encima')) cierraQuiz(); else atras(); });
+$('#fQuizAjustes').addEventListener('change', leeAjustesQuiz);
+$('#btnProbarQuiz').addEventListener('click', () => pasaQuiz(true));
+addEventListener('keydown', e => {
+  if (!$('#quiz').hidden) {
+    if (e.key === 'Escape') $('#btnSalirQuiz').click();
+  } else if (!$('#reproductor').hidden) {
+    if (e.key === 'Escape') atras();
+    else if (e.key === ' ') { e.preventDefault(); alternar(); }
+  } else if (!$('#padres').hidden && !$('#pinPanel').hidden) {
+    if (/^\d$/.test(e.key)) tecla(e.key);
+    else if (e.key === 'Backspace') tecla('borrar');
+  }
+});
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refrescar(false); });
+addEventListener('online', () => refrescar(false));
+setInterval(() => refrescar(false), 5 * 60 * 1000);
+
+if (history.state) history.replaceState(null, '');
+Q?.carga('preguntas.json').then(() => { if (!$('#ajustes').hidden) pintaAjustesQuiz(); }).catch(() => {});
+pintaCanales();
+pintaLista();
+if (!cfg.pin) abrePadres(); else refrescar(false);
+</script>
+</body>
+</html>
