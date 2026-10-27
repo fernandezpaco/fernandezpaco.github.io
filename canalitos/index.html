@@ -373,7 +373,9 @@ const IC = {
   juegos: '<svg viewBox="0 0 24 24"><path d="M7.5 6h9a5.5 5.5 0 0 1 5.4 6.5l-.8 4.2a2.8 2.8 0 0 1-4.8 1.4L14 16h-4l-2.3 2.1a2.8 2.8 0 0 1-4.8-1.4l-.8-4.2A5.5 5.5 0 0 1 7.5 6z"/><path style="fill:var(--tarjeta)" d="M7 10.2h1.6V8.6h1.6v1.6h1.6v1.6h-1.6v1.6H8.6v-1.6H7z"/><circle style="fill:var(--tarjeta)" cx="15.4" cy="9.8" r="1.25"/><circle style="fill:var(--tarjeta)" cx="17.6" cy="12.4" r="1.25"/></svg>',
 };
 // Los juegos de la pestaña Juegos: cada uno en juegos/<id>/ con su licencia (ver juegos/LEEME.md)
-const JUEGOS = [];
+const JUEGOS = [
+  { id: '2048', nombre: '2048', texto: 'Junta números iguales: 2 + 2 = 4…', emoji: '🔢', color: '#edc22e' },
+];
 
 // ── Datos: todo vive en este dispositivo (localStorage) ──
 function lee(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } }
