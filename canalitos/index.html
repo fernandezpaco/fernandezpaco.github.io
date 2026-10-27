@@ -189,6 +189,7 @@ body:not([data-vista=inicio]) :is(#buscar, #canales, #lista) { display: none; }
 .padres-cab { padding: 12px 16px; }
 .pin { display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 20px 16px; text-align: center; }
 .pin p { margin: 0; font-size: 18px; font-weight: 700; max-width: 320px; min-height: 2.6em; display: grid; place-items: center; }   /* el teclado no se mueve al cambiar el texto */
+.pin p.version { min-height: 0; font-size: 13px; font-weight: 600; color: var(--suave); }
 .puntos { display: flex; gap: 16px; }
 .puntos i { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--acento); }
 .puntos i.on { background: var(--acento); }
@@ -299,6 +300,7 @@ details ol { padding-left: 20px; line-height: 1.5; margin-bottom: 0; }
     <p id="pinTxt"></p>
     <div id="puntos" class="puntos"><i></i><i></i><i></i><i></i></div>
     <div id="teclado" class="teclado"></div>
+    <p id="version" class="version"></p>
   </div>
   <div id="ajustes" hidden>
     <h2>Zona de padres</h2>
@@ -320,7 +322,7 @@ details ol { padding-left: 20px; line-height: 1.5; margin-bottom: 0; }
       </label>
       <div id="fTemas" class="temas"></div>
       <label>Multiplicaciones hasta la tabla del
-        <select id="fTabla"><option>5</option><option>10</option><option>12</option></select>
+        <select id="fTabla"></select>
       </label>
       <label class="check"><input id="fVoz" type="checkbox"> Leer las preguntas en voz alta</label>
       <button id="btnProbarQuiz" class="boton suave">Probar un quiz</button>
@@ -350,6 +352,9 @@ details ol { padding-left: 20px; line-height: 1.5; margin-bottom: 0; }
 const $ = s => document.querySelector(s);
 const Q = window.Quiz || null;   // si quiz.js no carga, la app sigue sin quiz
 const K_CFG = 'canalitos.cfg', K_CACHE = 'canalitos.cache', K_MALOS = 'canalitos.malos';
+// Sale debajo del teclado del PIN, para saber si el móvil ya tiene lo último: se cambia en cada commit que toque
+// la app (index.html, quiz.js, preguntas.json o juegos/), con la fecha y la hora de Madrid
+const VERSION = '27-oct-2026 18:05';
 const FRESCO = 30 * 60 * 1000;   // cada canal se vuelve a pedir a YouTube pasada media hora
 const DIA = 24 * 3600 * 1000, MAX_VIDEOS = 500;   // y una vez al día, entero hasta 500 vídeos, para el buscador
 // La lista con la que arranca un dispositivo nuevo (luego se cambia en la zona de padres)
@@ -938,6 +943,8 @@ function pintaAjustesQuiz() {
   if (!Q) return;
   $('#fQuiz').checked = cfg.quiz.on;
   $('#fIdioma').value = cfg.quiz.idioma;
+  // De la tabla del 2 a la del 20 (antes 5, 10 o 12; pedido por Paco, 27-oct)
+  if (!$('#fTabla').options.length) $('#fTabla').append(...Array.from({ length: 19 }, (_, i) => el('option', {}, String(i + 2))));
   $('#fTabla').value = String(cfg.quiz.tabla);
   $('#fVoz').checked = cfg.quiz.voz;
   const nombres = Q.nombres('es');
@@ -1147,6 +1154,7 @@ addEventListener('online', () => refrescar(false));
 setInterval(() => refrescar(false), 5 * 60 * 1000);
 
 if (history.state) history.replaceState(null, '');
+$('#version').textContent = 'Versión ' + VERSION;
 Q?.carga('preguntas.json').then(() => { if (!$('#ajustes').hidden) pintaAjustesQuiz(); }).catch(() => {});
 pintaCanales();
 pintaLista();

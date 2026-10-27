@@ -76,16 +76,18 @@ window.Quiz = (() => {
     const falsas = azar(new Set(todas)).filter(x => x && x !== buena).slice(0, 2);
     return { buena, opciones: azar([buena, ...falsas]) };
   }
-  // La multiplicación dibujada: a filas de b puntos
+  // La multiplicación dibujada: a filas de b puntos. Pasado el 10 (las tablas llegan al 20), en grupos de 5 con un
+  // hueco entre medias, para poder contarlos
   function puntos(a, b) {
     const ns = 'http://www.w3.org/2000/svg', c = 26, svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('viewBox', `0 0 ${b * c} ${a * c}`);
-    svg.style.maxWidth = b * 34 + 'px';   // que 2 × 1 no salga con puntos enormes
-    svg.style.maxHeight = a * 34 + 'px';
+    const sitio = (k, n) => k * c + (n > 10 ? Math.floor(k / 5) * c / 2 : 0), ancho = sitio(b - 1, b) + c, alto = sitio(a - 1, a) + c;
+    svg.setAttribute('viewBox', `0 0 ${ancho} ${alto}`);
+    svg.style.maxWidth = ancho * 34 / c + 'px';   // que 2 × 1 no salga con puntos enormes
+    svg.style.maxHeight = alto * 34 / c + 'px';
     for (let i = 0; i < a; i++) for (let j = 0; j < b; j++) {
       const p = document.createElementNS(ns, 'circle');
-      p.setAttribute('cx', j * c + c / 2);
-      p.setAttribute('cy', i * c + c / 2);
+      p.setAttribute('cx', sitio(j, b) + c / 2);
+      p.setAttribute('cy', sitio(i, a) + c / 2);
       p.setAttribute('r', 9);
       if (i % 2) p.setAttribute('class', 'otra');
       svg.append(p);
