@@ -21,6 +21,7 @@
   --sombra: 0 1px 0 rgba(80,40,0,.05), 0 6px 18px rgba(80,40,0,.08);
   font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: light dark;
+  --menu: 64px;   /* alto del menú de abajo, sin la zona segura del iPhone */
 }
 @media (prefers-color-scheme: dark) {
   :root { --fondo: #1c1917; --tarjeta: #292420; --tinta: #f6efe8; --suave: #b3a59a; --borde: #3a322c;
@@ -29,7 +30,7 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; background: var(--fondo); color: var(--tinta); -webkit-tap-highlight-color: transparent; }
-body { min-height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+body { min-height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset-right) calc(var(--menu) + env(safe-area-inset-bottom)) env(safe-area-inset-left); }
 body.fijo { overflow: hidden; }
 button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 svg { fill: currentColor; display: block; }
@@ -61,7 +62,7 @@ h1 span { color: var(--acento); }
 .chip > span { width: 100%; overflow-wrap: anywhere; font-size: 12px; font-weight: 700; line-height: 1.15; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .chip.on > span { color: var(--acento); }
 
-#lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; padding: 4px 16px 40px; }
+#lista, #juegos { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; padding: 4px 16px 40px; }
 .video { display: block; width: 100%; text-align: left; background: var(--tarjeta); border-radius: 18px; overflow: hidden; box-shadow: var(--sombra); transition: transform .1s; }
 .video:active, .fila:active { transform: scale(.97); }
 .mini { position: relative; display: block; aspect-ratio: 16/9; background: #000; }
@@ -74,15 +75,27 @@ h1 span { color: var(--acento); }
 .vacio { grid-column: 1 / -1; text-align: center; padding: 70px 20px; color: var(--suave); }
 .vacio b { display: block; font-size: 22px; color: var(--tinta); margin-bottom: 8px; overflow-wrap: anywhere; }
 .vacio .boton { margin-top: 10px; padding: 12px 20px; }
-#estado { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 5;
+#estado { position: fixed; left: 50%; bottom: calc(var(--menu) + 16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 5;
           background: var(--tinta); color: var(--fondo); padding: 8px 16px; border-radius: 999px; font-size: 14px; font-weight: 700; white-space: nowrap; }
+
+/* ── Menú de abajo: Inicio y Buscar son la portada; Quiz y Juegos, sus pestañas ── */
+#menu { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9; display: flex; justify-content: space-around;
+        background: var(--tarjeta); border-top: 2px solid var(--borde);
+        padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+#menu button { flex: 1; max-width: 160px; height: var(--menu); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+               color: var(--suave); font-size: 12px; font-weight: 800; }
+#menu svg { width: 28px; height: 28px; }
+#menu button.on { color: var(--acento); }
+body:not([data-vista=inicio]) :is(#buscar, #canales, #lista) { display: none; }
+.juego .mini { display: grid; place-items: center; font-size: 64px; }
+.juego .canal { font-size: 13px; }
 
 /* ── Reproductor ── */
 #reproductor { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; background: #12100f; color: #fff;
                padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 .rp-cab { display: flex; align-items: center; gap: 12px; padding: 10px 12px; flex: none; }
 .volver { flex: none; background: rgba(127,127,127,.2); border-radius: 999px; padding: 10px 18px; font-weight: 800; font-size: 16px; }
-#rpTitulo { min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#rpTitulo, #jTitulo { min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rp-cuerpo { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
 .rp-video { flex: none; display: flex; flex-direction: column; background: #000; }
 .marco { position: relative; width: 100%; aspect-ratio: 16/9; margin: 0 auto; background: #000; }
@@ -161,7 +174,14 @@ h1 span { color: var(--acento); }
 #quiz { position: fixed; inset: 0; z-index: 15; overflow-y: auto; background: var(--fondo); color: var(--tinta);
         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 #quiz.encima { z-index: 25; }   /* «Probar un quiz» desde la zona de padres */
+#quiz.libre { z-index: 8; bottom: calc(var(--menu) + env(safe-area-inset-bottom)); padding-bottom: 0; }   /* pestaña Quiz: el menú sigue a la vista */
+#quiz.libre .padres-cab { display: none; }
 #quiz .padres-cab { padding-bottom: 0; }
+
+/* ── Juego: cada uno es una página aparte (juegos/<id>/) dentro de un marco aislado ── */
+#juego { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; background: #12100f; color: #fff;
+         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+#jMarco { flex: 1; min-height: 0; width: 100%; border: 0; background: #000; }
 
 /* ── Zona de padres ── */
 #padres { position: fixed; inset: 0; z-index: 20; overflow-y: auto; background: var(--fondo);
@@ -205,7 +225,7 @@ summary { font-weight: 700; cursor: pointer; }
 details ol { padding-left: 20px; line-height: 1.5; margin-bottom: 0; }
 </style>
 </head>
-<body>
+<body data-vista="inicio">
 
 <header class="cabecera">
   <h1>Canal<span>itos</span></h1>
@@ -218,7 +238,14 @@ details ol { padding-left: 20px; line-height: 1.5; margin-bottom: 0; }
 </header>
 <nav id="canales" aria-label="Canales"></nav>
 <main id="lista"></main>
+<section id="juegos" aria-label="Juegos" hidden></section>
 <div id="estado" hidden></div>
+<nav id="menu" aria-label="Menú">
+  <button data-v="inicio" class="on"><span></span>Inicio</button>
+  <button data-v="buscar"><span></span>Buscar</button>
+  <button data-v="quiz"><span></span>Quiz</button>
+  <button data-v="juegos"><span></span>Juegos</button>
+</nav>
 
 <section id="reproductor" hidden>
   <div class="rp-cab">
@@ -250,6 +277,15 @@ details ol { padding-left: 20px; line-height: 1.5; margin-bottom: 0; }
     </div>
     <aside id="masVideos"></aside>
   </div>
+</section>
+
+<section id="juego" hidden>
+  <div class="rp-cab">
+    <button id="btnSalirJuego" class="volver">← Volver</button>
+    <span id="jTitulo"></span>
+  </div>
+  <!-- Sin allow-same-origin: el juego no puede leer la clave ni el PIN que guarda esta web -->
+  <iframe id="jMarco" title="Juego" sandbox="allow-scripts allow-pointer-lock" allow="autoplay; fullscreen"></iframe>
 </section>
 
 <section id="quiz" hidden>
@@ -332,7 +368,12 @@ const IC = {
   todos: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>',
   lupa: '<svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M15.5 15.5 20 20" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>',
   candado: '<svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.2 10.5V8a3.8 3.8 0 0 1 7.6 0v2.5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>',
+  inicio: '<svg viewBox="0 0 24 24"><path d="M12 3.2 2.8 11a1 1 0 0 0 1.3 1.5l.9-.8V19a2 2 0 0 0 2 2h3.2v-5.2h3.6V21H17a2 2 0 0 0 2-2v-7.3l.9.8A1 1 0 0 0 21.2 11z"/></svg>',
+  quiz: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.3" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M9.3 9.4a2.8 2.8 0 1 1 3.9 2.6c-.8.4-1.2 1-1.2 1.8v.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.4" r="1.5"/></svg>',
+  juegos: '<svg viewBox="0 0 24 24"><path d="M7.5 6h9a5.5 5.5 0 0 1 5.4 6.5l-.8 4.2a2.8 2.8 0 0 1-4.8 1.4L14 16h-4l-2.3 2.1a2.8 2.8 0 0 1-4.8-1.4l-.8-4.2A5.5 5.5 0 0 1 7.5 6z"/><path style="fill:var(--tarjeta)" d="M7 10.2h1.6V8.6h1.6v1.6h1.6v1.6h-1.6v1.6H8.6v-1.6H7z"/><circle style="fill:var(--tarjeta)" cx="15.4" cy="9.8" r="1.25"/><circle style="fill:var(--tarjeta)" cx="17.6" cy="12.4" r="1.25"/></svg>',
 };
+// Los juegos de la pestaña Juegos: cada uno en juegos/<id>/ con su licencia (ver juegos/LEEME.md)
+const JUEGOS = [];
 
 // ── Datos: todo vive en este dispositivo (localStorage) ──
 function lee(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } }
@@ -610,13 +651,79 @@ function ir(estadoNuevo, modo) {
 }
 function atras() {
   if (history.state) history.back();
-  else { cierraReproductor(); cierraPadres(); }
+  else { cierraReproductor(); cierraPadres(); cierraJuego(); }
 }
 addEventListener('popstate', () => {
   const st = history.state || {};
   if (!st.v && !$('#reproductor').hidden) cierraReproductor();
   if (!st.p && !$('#padres').hidden) cierraPadres();
+  if (!st.j && !$('#juego').hidden) cierraJuego();
 });
+
+// ── Menú de abajo. Las pestañas no van al historial (como en las apps): «atrás» sigue cerrando el vídeo o el juego ──
+let vista = 'inicio';
+function muestra(v) {
+  if (vista === 'quiz' && v !== 'quiz') { Q?.cierra(); $('#quiz').hidden = true; $('#quiz').classList.remove('libre'); }
+  vista = v;
+  document.body.dataset.vista = v;
+  $('#juegos').hidden = v !== 'juegos';
+  if (v === 'quiz') {
+    $('#quiz').classList.remove('encima');
+    $('#quiz').classList.add('libre');
+    $('#quiz').hidden = false;
+    quizSuelto();
+  }
+  if (v === 'juegos') pintaJuegos();
+  pintaMenu();
+}
+function pintaMenu() {
+  const buscando = vista === 'inicio' && (!!busca || document.activeElement === $('#q'));
+  for (const b of document.querySelectorAll('#menu button')) b.classList.toggle('on', b.dataset.v === (buscando ? 'buscar' : vista));
+}
+function pestana(v) {
+  const antes = vista;
+  if (v === 'buscar') {
+    muestra('inicio');
+    scrollTo(0, 0);
+    return $('#q').focus();   // en el mismo toque, para que el iPhone saque el teclado
+  }
+  if (v === 'inicio' && antes === 'inicio') {   // ya estaba: vuelve a la portada de siempre
+    $('#q').value = '';
+    $('#btnBorrar').hidden = true;
+    busca = '';
+    filtro = null;
+    pintaCanales();
+    pintaLista();
+  }
+  muestra(v);
+  scrollTo(0, 0);
+}
+// Quiz por gusto: al acabar, otro; y si toca quiz antes del vídeo siguiente, este ya cuenta
+function quizSuelto() {
+  const o = { ...cfg.quiz, boton: cfg.quiz.idioma === 'en' ? 'Next quiz ▶' : 'Otro quiz ▶' };
+  const lanzado = Q?.lanza($('#quizCaja'), o, () => { quizPendiente = false; quizSuelto(); });
+  if (!lanzado) $('#quizCaja').replaceChildren(vacio('No hay preguntas', Q ? 'Pide a papá o a mamá que elijan temas en el candado.' : 'El quiz no se ha podido cargar.'));
+  $('#quiz').scrollTop = 0;
+}
+function pintaJuegos() {
+  $('#juegos').replaceChildren(...(JUEGOS.length ? JUEGOS.map(j => el('button', { class: 'video juego', onclick: () => abreJuego(j) },
+    el('span', { class: 'mini', style: `background:${j.color}` }, j.emoji),
+    el('span', { class: 'info' }, el('span', {}, el('span', { class: 'titulo' }, j.nombre), el('span', { class: 'canal' }, j.texto)))))
+    : [vacio('Pronto habrá juegos', '')]));
+}
+function abreJuego(j) {
+  ir({ j: j.id }, 'push');
+  document.body.classList.add('fijo');
+  $('#jTitulo').textContent = j.nombre;
+  $('#jMarco').src = `juegos/${j.id}/${j.pagina || 'index.html'}`;
+  $('#juego').hidden = false;
+}
+function cierraJuego() {
+  if ($('#juego').hidden) return;
+  $('#juego').hidden = true;
+  $('#jMarco').src = 'about:blank';   // para el juego y su sonido
+  document.body.classList.remove('fijo');
+}
 
 // ── Reproductor ──
 let player = null, listo = false, ytListo = null, actual = null, tic = null, vigia = null, arrastrando = false, listaSucia = false;
@@ -788,6 +895,7 @@ function pasaQuiz(encima) {
     });
     if (!lanzado) return ok(true);
     salDelQuiz = () => ok(false);
+    $('#quiz').classList.remove('libre');
     $('#quiz').classList.toggle('encima', !!encima);
     $('#quiz').hidden = false;
     $('#quiz').scrollTop = 0;
@@ -960,6 +1068,13 @@ for (const d of ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'borrar']
 
 $('#btnPadres').addEventListener('click', abrePadres);
 $('#btnSalirPadres').addEventListener('click', atras);
+$('#btnSalirJuego').addEventListener('click', atras);
+for (const b of document.querySelectorAll('#menu button')) {
+  b.firstElementChild.innerHTML = IC[b.dataset.v === 'buscar' ? 'lupa' : b.dataset.v];
+  b.addEventListener('click', () => pestana(b.dataset.v));
+}
+$('#q').addEventListener('focus', pintaMenu);
+$('#q').addEventListener('blur', pintaMenu);
 $('#btnVolver').addEventListener('click', atras);
 $('#btnCerrar').addEventListener('click', atras);
 $('#btnPlay').addEventListener('click', alternar);
@@ -973,6 +1088,7 @@ function buscaYa(texto) {
   busca = texto;
   $('#btnBorrar').hidden = !texto;
   pintaLista();
+  pintaMenu();
   scrollTo(0, 0);
 }
 $('#q').addEventListener('input', e => {
@@ -989,7 +1105,9 @@ $('#fQuizAjustes').addEventListener('change', leeAjustesQuiz);
 $('#btnProbarQuiz').addEventListener('click', () => pasaQuiz(true));
 addEventListener('keydown', e => {
   if (!$('#quiz').hidden) {
-    if (e.key === 'Escape') $('#btnSalirQuiz').click();
+    if (e.key === 'Escape' && !$('#quiz').classList.contains('libre')) $('#btnSalirQuiz').click();
+  } else if (!$('#juego').hidden) {
+    if (e.key === 'Escape') atras();
   } else if (!$('#reproductor').hidden) {
     if (e.key === 'Escape') atras();
     else if (e.key === ' ') { e.preventDefault(); alternar(); }
